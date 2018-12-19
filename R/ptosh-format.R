@@ -1,12 +1,6 @@
-#症例登録番号(I列)をキーにしてループを回す（繰り返しシートの可能性があるため）。
-#変数名が定義されているフィールド番号を含む列名のデータに対し、マッピング上の変数名にて読み込む。
-#SASでデータの次の列の文字列をFORMATとしてあてる。
-#RであればValue Labelとして次の列の文字列をfactorとしてあてる(*)
-#sheet.alias_nameのループが終わればデータセットを出力して終了。
-
 # Format Ptosh data for analysis program
-# 作成日: 2018/12/19
-# 作成者: mariko ohtsuka
+# Created date: 2018/12/19
+# Author: mariko ohtsuka
 
 # library, function section ------
 exit <- function(){
@@ -46,5 +40,11 @@ for (i in 1:length(alias_name)) {
   if (length(file_index) > 0) {
     assign(alias_name[i], read.csv(paste(input_path, file_list[file_index], sep="/"), as.is=T, na.strings="",
                                    fileEncoding="cp932"))
+    #症例登録番号(I列)をキーにしてループを回す（繰り返しシートの可能性があるため）。
+    #変数名が定義されているフィールド番号を含む列名のデータに対し、マッピング上の変数名にて読み込む。
+    #SASでデータの次の列の文字列をFORMATとしてあてる。
+    #RであればValue Labelとして次の列の文字列をfactorとしてあてる(*)
+
   }
 }
+#sheet.alias_nameのループが終わればデータセットを出力して終了。
