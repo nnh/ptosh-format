@@ -19,8 +19,12 @@ Exit <- function(){
 #'
 #' @examples
 CheckColname <- function(col_name, df){
-  # Returns true if column "col_name" exists in data frame "df", false if it does not exist
-  return(col_name %in% colnames(df))
+  # Returns column index if column "col_name" exists in data frame "df", -1 if it does not exist
+  res = -1
+  if (col_name %in% colnames(df)) {
+    res <- which(col_name == colnames(df))
+  }
+  return(res)
 }
 #' Title
 #'
@@ -32,6 +36,7 @@ EditFactor <- function(df){
   dup_df <- df[!duplicated(df[1]), ]
   sortlist <- order(dup_df[1])
   sort_df <- dup_df[sortlist, ]
+  sort_df <- na.omit(sort_df)
   return(sort_df)
 }
 # constant section ------
@@ -80,13 +85,18 @@ for (i in 1:length(alias_name)) {
     for (j in 1:length(df_itemlist)) {
       column_name <- sheet_csv[j, "variable"]
       # Skip if there is no column with that name
-      if (CheckColname(paste0("field", sheet_csv[j, 3]), df_sheet)) {
-        temp_df_sheet <- cbind(temp_df_sheet, df_sheet[paste0("field", sheet_csv[j, 3])])
+      target_column_name <- paste0("field", sheet_csv[j, 3])
+      target_column_index <- CheckColname(target_column_name, df_sheet)
+      if (target_column_index > 0) {
+        temp_df_sheet <- cbind(temp_df_sheet, df_sheet[target_column_name])
+        df_fact <- EditFactor(df_sheet[c(target_column_index, target_column_index + 1)])
+        temp_df_sheet[ ,target_column_name] <- factor(temp_df_sheet[ ,target_column_name],
+                                                    levels = as.matrix(df_fact[1]),
+                                                    labels = as.matrix(df_fact[2]))
       }
       assign(temp_df_name, temp_df_sheet)
     }
   }
 }
 #sheet.alias_nameのループが終わればデータセットを出力して終了。
-df_fact <- EditFactor(ae[c("field1", "有害事象名")])
-temp_ae$field1 <- factor(temp_ae$field1, levels = df_fact[1], labels = df_fact[2])
+#write.csv(temp_ae, paste(output_path, file_list[i], sep="/"), na='""', row.names=F)
