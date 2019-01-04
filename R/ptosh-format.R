@@ -12,35 +12,29 @@
 Exit <- function(){
   .Internal(.invokeRestart(list(NULL, NULL), NULL))
 }
-#' Title
-#'
+#' @title
+#' Checking if the column name exists
+#' @description
+#' Returns column index if column "col_name" exists in data frame "df", -1 if it does not exist
+#' @param
+#' col_name : String of column name
+#' df : String of data frame name
 #' @return
-#' @export
-#'
+#' the column index : if "col_name" exists
+#' -1 : if "col_name" is not exist
 #' @examples
+#' colnames(df_test) : "field1" "field3" "field5"
+#' CheckColname("field3", "df_test") : return 2
+#' CheckColname("field2", "df_test") : return -1
 CheckColname <- function(col_name, df){
-  # Returns column index if column "col_name" exists in data frame "df", -1 if it does not exist
   res = -1
   if (col_name %in% colnames(df)) {
     res <- which(col_name == colnames(df))
   }
   return(res)
 }
-#' Title
-#'
-#' @return
-#' @export
-#'
-#' @examples
-EditFactor <- function(df){
-  dup_df <- df[!duplicated(df[1]), ]
-  sortlist <- order(dup_df[1])
-  sort_df <- dup_df[sortlist, ]
-  sort_df <- na.omit(sort_df)
-  return(sort_df)
-}
-# constant section ------
-# main section ------
+# Constant section ------
+# Main section ------
 
 # Initialize ------
 Sys.setenv("TZ" = "Asia/Tokyo")
@@ -53,7 +47,15 @@ output_path <<- paste0(parent_path, "/output")
 if (file.exists(output_path) == F) {
   dir.create(output_path)
 }
-# input sheet.csv
+# Input option.csv
+option_csv <- read.csv(paste0(external_path, "/option.csv"), as.is=T, fileEncoding="utf-8", stringsAsFactors=F)
+# Generate factor from option.csv
+option_name_list <- option_csv[!duplicated(option_csv[1]), "Option.name"]
+for (i in 1:length(option_name_list)) {
+  temp <- subset(option_csv, option_csv$Option.name == option_name_list[i])
+  x <- factor
+}
+# Input sheet.csv
 sheet_csv <- read.csv(paste0(external_path, "/testsheet.csv"), as.is=T, fileEncoding="utf-8", stringsAsFactors=F)
 # Check for duplicate 'variable'
 # Check overlap from the beginning and end, OR of both
@@ -65,7 +67,8 @@ if (nrow(df_duplicated) != 0) {
   stop("not numeric !")
   Exit()
 }
-# input ptosh_csv
+# Input ptosh_csv
+# Set ptosh_csv's name list
 alias_name <- sheet_csv[!duplicated(sheet_csv[1]), 1]
 file_list <- list.files(input_path)
 for (i in 1:length(alias_name)) {
@@ -77,22 +80,31 @@ for (i in 1:length(alias_name)) {
     #変数名が定義されているフィールド番号を含む列名のデータに対し、マッピング上の変数名にて読み込む。
     #SASでデータの次の列の文字列をFORMATとしてあてる。
     #RであればValue Labelとして次の列の文字列をfactorとしてあてる(*)
+
+    # Select sheet_csv's rows if sheet_csv$Sheet.alias_name and ptosh_csv$alias_name is same value
     df_itemlist <- subset(sheet_csv, sheet_csv[ ,1] == alias_name[i])
+    # Set dataset from ptosh_csv
     df_sheet <- get(alias_name[i])
+    # temp_df_name : value that add "temp" to the head of ptosh_csv name
+    # temp_df_sheet : Dataset named temp_df_name, set ptosh_csv
     temp_df_name <- paste0("temp_", alias_name[i])
     assign(temp_df_name, data.frame(id = df_sheet[9]))
     temp_df_sheet <- get(temp_df_name)
     for (j in 1:length(df_itemlist)) {
+      # Get column name from the value of sheet_csv$variable
       column_name <- sheet_csv[j, "variable"]
       # Skip if there is no column with that name
       target_column_name <- paste0("field", sheet_csv[j, 3])
       target_column_index <- CheckColname(target_column_name, df_sheet)
       if (target_column_index > 0) {
         temp_df_sheet <- cbind(temp_df_sheet, df_sheet[target_column_name])
-        df_fact <- EditFactor(df_sheet[c(target_column_index, target_column_index + 1)])
-        temp_df_sheet[ ,target_column_name] <- factor(temp_df_sheet[ ,target_column_name],
-                                                    levels = as.matrix(df_fact[1]),
-                                                    labels = as.matrix(df_fact[2]))
+        # Set option value
+        if (nchar(df_itemlist[j, "Option.name"]) > 0) {
+          temp_factor <- subset(option_csv, option_csv$Option.name == df_itemlist[j, "Option.name"])
+          temp_df_sheet[ ,target_column_name] <- factor(temp_df_sheet[ ,target_column_name],
+                                                        levels = as.matrix(temp_factor["Option..Value.code"]),
+                                                        labels = as.matrix(temp_factor["Option..Value.name"]))
+        }
       }
       assign(temp_df_name, temp_df_sheet)
     }
