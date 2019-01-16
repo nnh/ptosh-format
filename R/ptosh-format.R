@@ -77,41 +77,38 @@ file_list <- list.files(input_path)
 for (i in 1:length(alias_name)) {
   file_index <- grep(paste0("_", alias_name[i] , "_"), file_list)
   if (length(file_index) > 0) {
-    assign(alias_name[i], read.csv(paste(input_path, file_list[file_index], sep="/"), as.is=T, na.strings="",
+    ptosh_input <- paste0("rawdata_", alias_name[i])
+    ptosh_output <- alias_name[i]
+    assign(ptosh_input, read.csv(paste(input_path, file_list[file_index], sep="/"), as.is=T, na.strings="",
                                    fileEncoding="cp932"))
     # Select sheet_csv's rows if sheet_csv$Sheet.alias_name and ptosh_csv$alias_name is same value
     df_itemlist <- subset(sheet_csv, sheet_csv[ ,kSheetAliasNameColumnIndex] == alias_name[i])
     # Set dataset from ptosh_csv, sort by I column (Registration number)
-    temp_df_sheet <- get(alias_name[i])
-    sortlist <- order(temp_df_sheet[kPtoshRegistrationNumberColumnIndex])
-    df_sheet <- temp_df_sheet[sortlist, ]
-    # temp_df_name : value that add "temp" to the head of ptosh_csv name
-    # temp_df_sheet : Dataset named temp_df_name, set ptosh_csv
-    temp_df_name <- paste0("temp_", alias_name[i])
-    assign(temp_df_name, data.frame(id = df_sheet[kPtoshRegistrationNumberColumnIndex]))
-    temp_df_sheet <- get(temp_df_name)
+    sortlist <- order(get(ptosh_input)[kPtoshRegistrationNumberColumnIndex])
+    sort_ptosh_input <- get(ptosh_input)[sortlist, ]
+    temp_ptosh_output <- data.frame(id = sort_ptosh_input[kPtoshRegistrationNumberColumnIndex])
     for (j in 1:length(df_itemlist$variable)) {
       # Get column name from the value of sheet_csv$variable
       column_name <- df_itemlist[j, "variable"]
       # Skip if there is no column with that name
       target_column_name <- paste0("field", sheet_csv[j, kSheetFieldItemNameColumnIndex])
-      target_column_index <- CheckColname(target_column_name, df_sheet)
-      temp_colnames <- c(colnames(temp_df_sheet), column_name)
+      target_column_index <- CheckColname(target_column_name, sort_ptosh_input)
+      temp_output_colnames <- c(colnames(temp_ptosh_output), column_name)
       if (target_column_index > 0) {
-        temp_df_sheet <- cbind(temp_df_sheet, df_sheet[target_column_name])
-        colnames(temp_df_sheet) <- temp_colnames
+        temp_ptosh_output <- cbind(temp_ptosh_output, sort_ptosh_input[target_column_name])
+        colnames(temp_ptosh_output) <- temp_output_colnames
         # Set option value
         if (!is.na(df_itemlist[j, "Option.name"])) {
           temp_factor <- subset(option_csv, option_csv$Option.name == df_itemlist[j, "Option.name"])
-          temp_df_sheet[ , column_name] <- factor(temp_df_sheet[ , column_name],
-                                                        levels = as.matrix(temp_factor["Option..Value.code"]),
-                                                        labels = as.matrix(temp_factor["Option..Value.name"]))
+          temp_ptosh_output[ , column_name] <-   factor(temp_ptosh_output[ , column_name],
+                                                 levels = as.matrix(temp_factor["Option..Value.code"]),
+                                                 labels = as.matrix(temp_factor["Option..Value.name"]))
         }
       }
-      assign(temp_df_name, temp_df_sheet)
+      assign(ptosh_output, temp_ptosh_output)
     }
     # Output csv and R_dataframe
-    write.csv(get(temp_df_name), paste0(output_path, "/", alias_name[i], ".csv"), na='""', row.names=F)
-    save(list=temp_df_name, file=(paste0(output_dst_path, "/", alias_name[i], ".Rda")))
+    write.csv(ptosh_output, paste0(output_path, "/", alias_name[i], ".csv"), na='""', row.names=F)
+    save(list=ptosh_output, file=(paste0(output_dst_path, "/", alias_name[i], ".Rda")))
   }
 }
