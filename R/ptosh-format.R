@@ -34,9 +34,11 @@ CheckColname <- function(col_name, df){
   return(res)
 }
 # Constant section ------
-kPtoshRegistrationNumberColumnIndex = 9  # ptosh_csv$registration_number
-kSheetAliasNameColumnIndex = 1  # sheet.csv$sheet.alias_name
-kSheetFieldItemNameColumnIndex = 3  # sheet.csv$FieldItem.name.tr..field......
+kPtoshRegistrationNumberColumnIndex <- 9  # ptosh_csv$registration_number
+kSheetAliasNameColumnIndex <- 1  # sheet.csv$sheet.alias_name
+kSheetFieldItemNameColumnIndex <- 3  # sheet.csv$FieldItem.name.tr..field......
+kCtcae_convertflag <- 1
+kOption_Ctcae <- "ctcae"
 # Main section ------
 
 # Initialize ------
@@ -93,16 +95,36 @@ for (i in 1:length(alias_name)) {
       # Skip if there is no column with that name
       target_column_name <- paste0("field", sheet_csv[j, kSheetFieldItemNameColumnIndex])
       target_column_index <- CheckColname(target_column_name, sort_ptosh_input)
-      temp_output_colnames <- c(colnames(temp_ptosh_output), column_name)
+      save_output_colnames <- colnames(temp_ptosh_output)
       if (target_column_index > 0) {
-        temp_ptosh_output <- cbind(temp_ptosh_output, sort_ptosh_input[target_column_name])
-        colnames(temp_ptosh_output) <- temp_output_colnames
+        if ((df_itemlist[j, "FieldItem.field_type"] == kOption_Ctcae)
+            && !is.na(df_itemlist[j, "FieldItem.field_type"])) {
+          if (kCtcae_convertflag == 1) {
+            temp_ctcae <- sort_ptosh_input[target_column_index + 1]
+          } else {
+            temp_ctcae <- sort_ptosh_input[target_column_index]
+          }
+          temp_ptosh_output <- cbind(temp_ptosh_output, temp_ctcae, rep(NA, nrow(sort_ptosh_input)))
+          colnames(temp_ptosh_output) <- c(save_output_colnames, paste0(column_name, "_term"),
+                                           paste0(column_name, "_grade"))
+        } else {
+          temp_ptosh_output <- cbind(temp_ptosh_output, sort_ptosh_input[target_column_index])
+          colnames(temp_ptosh_output) <- c(save_output_colnames, column_name)
+        }
         # Set option value
         if (!is.na(df_itemlist[j, "Option.name"])) {
           temp_factor <- subset(option_csv, option_csv$Option.name == df_itemlist[j, "Option.name"])
-          temp_ptosh_output[ , column_name] <-   factor(temp_ptosh_output[ , column_name],
-                                                 levels = as.matrix(temp_factor["Option..Value.code"]),
-                                                 labels = as.matrix(temp_factor["Option..Value.name"]))
+          if (nrow(temp_factor) > 0) {
+            if ((df_itemlist[j, "FieldItem.field_type"] == kOption_Ctcae)
+                && !is.na(df_itemlist[j, "FieldItem.field_type"])) {
+              temp_factor_data <- temp_ptosh_output[ , column_name]
+            } else {
+              factor_data <- temp_ptosh_output[ , column_name]
+            }
+            temp_ptosh_output[ , column_name] <-   factor(temp_ptosh_output[ , column_name],
+                                                   levels = as.matrix(temp_factor["Option..Value.code"]),
+                                                   labels = as.matrix(temp_factor["Option..Value.name"]))
+          }
         }
       }
       assign(ptosh_output, temp_ptosh_output)
