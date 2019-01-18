@@ -3,6 +3,8 @@
 # Author: mariko ohtsuka
 
 # library, function section ------
+# install.packages("tidyr")
+library("tidyr")
 #' @title
 #' Exit function
 #' @description
@@ -87,39 +89,46 @@ for (i in 1:length(alias_name)) {
     sortlist <- order(get(ptosh_input)[kPtoshRegistrationNumberColumnIndex])
     sort_ptosh_input <- get(ptosh_input)[sortlist, ]
     temp_ptosh_output <- data.frame(id = sort_ptosh_input[kPtoshRegistrationNumberColumnIndex])
-    for (j in 1:length(df_itemlist$variable)) {
+    for (j in 1:nrow(df_itemlist)) {
       # Get column name from the value of sheet_csv$variable
       column_name <- df_itemlist[j, "variable"]
       # Skip if there is no column with that name
-      target_column_name <- paste0("field", sheet_csv[j, "FieldItem.name.tr..field......"])
+      target_column_name <- paste0("field", df_itemlist[j, "FieldItem.name.tr..field......"])
       target_column_index <- CheckColname(target_column_name, sort_ptosh_input)
       save_output_colnames <- colnames(temp_ptosh_output)
       if (target_column_index > 0) {
-        if ((df_itemlist[j, "FieldItem.field_type"] == kOption_Ctcae)
-            && !is.na(df_itemlist[j, "FieldItem.field_type"])) {
+        if ((df_itemlist[j, "FieldItem.field_type"] == kOption_Ctcae) && !is.na(df_itemlist[j, "FieldItem.field_type"])) {
           if (kCtcae_convertflag == 1) {
             temp_ctcae <- sort_ptosh_input[target_column_index + 1]
           } else {
             temp_ctcae <- sort_ptosh_input[target_column_index]
           }
-          temp_ptosh_output <- cbind(temp_ptosh_output, temp_ctcae, rep(NA, nrow(sort_ptosh_input)))
-          colnames(temp_ptosh_output) <- c(save_output_colnames, paste0(column_name, "_term"),
-                                           paste0(column_name, "_grade"))
+          colnames(temp_ctcae) <- kOption_Ctcae
+          temp_ctcae_df <- temp_ctcae %>% separate(kOption_Ctcae, into = c(paste0(column_name, "_term"),
+                                                                           paste0(column_name, "_grade")), sep = "-")
+          temp_ptosh_output <- cbind(temp_ptosh_output, temp_ctcae_df)
+#          colnames(temp_ptosh_output) <- c(save_output_colnames, paste0(column_name, "_term"),
+ #                                          paste0(column_name, "_grade"))
         } else {
           temp_ptosh_output <- cbind(temp_ptosh_output, sort_ptosh_input[target_column_index])
           colnames(temp_ptosh_output) <- c(save_output_colnames, column_name)
         }
         # Set option value
-        if (!is.na(df_itemlist[j, "Option.name"])) {
-          temp_factor <- subset(option_csv, option_csv$Option.name == df_itemlist[j, "Option.name"])
+        if (!is.na(df_itemlist[j, "Option.name"]) | (df_itemlist[j, "FieldItem.field_type"] == kOption_Ctcae)) {
+          if (df_itemlist[j, "FieldItem.field_type"] == kOption_Ctcae) {
+            temp_factor <- subset(option_csv, option_csv$Option.name == "CTCAE")
+          } else {
+            temp_factor <- subset(option_csv, option_csv$Option.name == df_itemlist[j, "Option.name"])
+          }
           if (nrow(temp_factor) > 0) {
             if ((df_itemlist[j, "FieldItem.field_type"] == kOption_Ctcae)
                 && !is.na(df_itemlist[j, "FieldItem.field_type"])) {
-              temp_factor_data <- temp_ptosh_output[ , column_name]
+              temp_factor_colname <- paste0(column_name, "_term")
             } else {
-              factor_data <- temp_ptosh_output[ , column_name]
+              temp_factor_colname <- column_name
             }
-            temp_ptosh_output[ , column_name] <-   factor(temp_ptosh_output[ , column_name],
+            factor_data <- temp_ptosh_output[ , temp_factor_colname]
+            temp_ptosh_output[ , temp_factor_colname] <-   factor(temp_ptosh_output[ , temp_factor_colname],
                                                    levels = as.matrix(temp_factor["Option..Value.code"]),
                                                    labels = as.matrix(temp_factor["Option..Value.name"]))
           }
