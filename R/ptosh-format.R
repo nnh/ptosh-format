@@ -95,7 +95,6 @@ for (i in 1:length(alias_name)) {
       # Skip if there is no column with that name
       target_column_name <- paste0("field", df_itemlist[j, "FieldItem.name.tr..field......"])
       target_column_index <- CheckColname(target_column_name, sort_ptosh_input)
-      save_output_colnames <- colnames(temp_ptosh_output)
       if (target_column_index > 0) {
         if ((df_itemlist[j, "FieldItem.field_type"] == kOption_Ctcae) && !is.na(df_itemlist[j, "FieldItem.field_type"])) {
           if (kCtcae_convertflag == 1) {
@@ -104,14 +103,18 @@ for (i in 1:length(alias_name)) {
             temp_ctcae <- sort_ptosh_input[target_column_index]
           }
           colnames(temp_ctcae) <- kOption_Ctcae
-          temp_ctcae_df <- temp_ctcae %>% separate(kOption_Ctcae, into = c(paste0(column_name, "_term"),
+          ctcae_term_colname <- paste0(column_name, "_term")
+          temp_ctcae_df <- temp_ctcae %>% separate(kOption_Ctcae, into = c(ctcae_term_colname,
                                                                            paste0(column_name, "_grade")), sep = "-")
           temp_ptosh_output <- cbind(temp_ptosh_output, temp_ctcae_df)
-#          colnames(temp_ptosh_output) <- c(save_output_colnames, paste0(column_name, "_term"),
- #                                          paste0(column_name, "_grade"))
-        } else {
-          temp_ptosh_output <- cbind(temp_ptosh_output, sort_ptosh_input[target_column_index])
-          colnames(temp_ptosh_output) <- c(save_output_colnames, column_name)
+        } else if ((df_itemlist[j, "FieldItem.field_type"] == "checkbox") && !is.na(df_itemlist[j, "FieldItem.field_type"])) {
+          temp_checkbox <- subset(option_csv, option_csv$Option.name == df_itemlist[j, "Option.name"])
+          df_itemlist[j, "Option.name"] <- NA
+        }
+        else {
+          temp_cbind_column <- sort_ptosh_input[target_column_index]
+          colnames(temp_cbind_column) <- column_name
+          temp_ptosh_output <- cbind(temp_ptosh_output, temp_cbind_column)
         }
         # Set option value
         if (!is.na(df_itemlist[j, "Option.name"]) | (df_itemlist[j, "FieldItem.field_type"] == kOption_Ctcae)) {
@@ -123,7 +126,7 @@ for (i in 1:length(alias_name)) {
           if (nrow(temp_factor) > 0) {
             if ((df_itemlist[j, "FieldItem.field_type"] == kOption_Ctcae)
                 && !is.na(df_itemlist[j, "FieldItem.field_type"])) {
-              temp_factor_colname <- paste0(column_name, "_term")
+              temp_factor_colname <- ctcae_term_colname
             } else {
               temp_factor_colname <- column_name
             }
