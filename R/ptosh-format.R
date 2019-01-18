@@ -35,8 +35,6 @@ CheckColname <- function(col_name, df){
 }
 # Constant section ------
 kPtoshRegistrationNumberColumnIndex <- 9  # ptosh_csv$registration_number
-kSheetAliasNameColumnIndex <- 1  # sheet.csv$sheet.alias_name
-kSheetFieldItemNameColumnIndex <- 3  # sheet.csv$FieldItem.name.tr..field......
 kCtcae_convertflag <- 1
 kOption_Ctcae <- "ctcae"
 # Main section ------
@@ -61,7 +59,7 @@ option_csv <- read.csv(paste0(external_path, "/option.csv"), as.is=T, fileEncodi
 # Input sheet.csv, delete rows that 'variable' is NA
 sheet_csv <- read.csv(paste0(external_path, "/testsheet.csv"), as.is=T, na.strings="", fileEncoding="utf-8",
                       stringsAsFactors=F)
-sheet_csv <- subset(sheet_csv, !is.na(sheet_csv$variable))
+sheet_csv <- subset(sheet_csv, !is.na(sheet_csv$variable) & !is.na(sheet_csv$FieldItem.label))
 # Check for duplicate 'variable'
 # Check overlap from the beginning and end, OR of both
 df_duplicated <- sheet_csv[duplicated(sheet_csv$variable) | duplicated(sheet_csv$variable, fromLast=T), ]
@@ -74,7 +72,7 @@ if (nrow(df_duplicated) != 0) {
 }
 # Input ptosh_csv
 # Set ptosh_csv's name list
-alias_name <- sheet_csv[!duplicated(sheet_csv[kSheetAliasNameColumnIndex]), kSheetAliasNameColumnIndex]
+alias_name <- sheet_csv[!duplicated(sheet_csv["Sheet.alias_name"]), "Sheet.alias_name"]
 file_list <- list.files(input_path)
 for (i in 1:length(alias_name)) {
   file_index <- grep(paste0("_", alias_name[i] , "_"), file_list)
@@ -84,7 +82,7 @@ for (i in 1:length(alias_name)) {
     assign(ptosh_input, read.csv(paste(input_path, file_list[file_index], sep="/"), as.is=T, na.strings="",
                                    fileEncoding="cp932"))
     # Select sheet_csv's rows if sheet_csv$Sheet.alias_name and ptosh_csv$alias_name is same value
-    df_itemlist <- subset(sheet_csv, sheet_csv[ ,kSheetAliasNameColumnIndex] == alias_name[i])
+    df_itemlist <- subset(sheet_csv, sheet_csv[ ,"Sheet.alias_name"] == alias_name[i])
     # Set dataset from ptosh_csv, sort by I column (Registration number)
     sortlist <- order(get(ptosh_input)[kPtoshRegistrationNumberColumnIndex])
     sort_ptosh_input <- get(ptosh_input)[sortlist, ]
@@ -93,7 +91,7 @@ for (i in 1:length(alias_name)) {
       # Get column name from the value of sheet_csv$variable
       column_name <- df_itemlist[j, "variable"]
       # Skip if there is no column with that name
-      target_column_name <- paste0("field", sheet_csv[j, kSheetFieldItemNameColumnIndex])
+      target_column_name <- paste0("field", sheet_csv[j, "FieldItem.name.tr..field......"])
       target_column_index <- CheckColname(target_column_name, sort_ptosh_input)
       save_output_colnames <- colnames(temp_ptosh_output)
       if (target_column_index > 0) {
