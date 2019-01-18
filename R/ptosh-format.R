@@ -35,14 +35,32 @@ CheckColname <- function(col_name, df){
   }
   return(res)
 }
+#' @title
+#' Output csv and R_dataframe
+#' @param
+#' df : dataframe name
+#' output_csv_path : output "*.csv" path
+#' output_rda_path : output "*.Rda" path
+#' @return
+#' No return value
+OutputDF <- function(df, output_csv_path, output_rda_path){
+  # Output csv and R_dataframe
+  write.csv(get(df), paste0(output_csv_path, "/", df, ".csv"), na='""', row.names=F)
+  save(list=df, file=(paste0(output_rda_path, "/", df, ".Rda")))
+}
 # Constant section ------
 kPtoshRegistrationNumberColumnIndex <- 9  # ptosh_csv$registration_number
 kCtcae_convertflag <- 1
-kOption_Ctcae <- "ctcae"
+kRegistration_colname <- "SUBJID"
+kOption_ctcae <- "ctcae"
+kOutput_DF <- "ptdata"
 # Main section ------
 
 # Initialize ------
 Sys.setenv("TZ" = "Asia/Tokyo")
+if (exists(kOutput_DF)) {
+  rm(list=kOutput_DF)
+}
 parent_path <- "/Users/admin/Desktop/NHOH-R-miniCHP"
 # Setting of input/output path
 input_path <- paste0(parent_path, "/input")
@@ -74,7 +92,9 @@ if (nrow(df_duplicated) != 0) {
 }
 # Input ptosh_csv
 # Set ptosh_csv's name list
-alias_name <- sheet_csv[!duplicated(sheet_csv["Sheet.alias_name"]), "Sheet.alias_name"]
+unique_sheet_csv <- sheet_csv[!duplicated(sheet_csv["Sheet.alias_name"]), ]
+alias_name <- unique_sheet_csv$Sheet.alias_name
+sheet_category <- unique_sheet_csv$Sheet.category
 file_list <- list.files(input_path)
 for (i in 1:length(alias_name)) {
   file_index <- grep(paste0("_", alias_name[i] , "_"), file_list)
@@ -88,42 +108,65 @@ for (i in 1:length(alias_name)) {
     # Set dataset from ptosh_csv, sort by I column (Registration number)
     sortlist <- order(get(ptosh_input)[kPtoshRegistrationNumberColumnIndex])
     sort_ptosh_input <- get(ptosh_input)[sortlist, ]
+    # Extract the rows of "最終報告" is true if Sheet.category is "ae_report"
+    if (sheet_category[i] == "ae_report") {
+      sort_ptosh_input <- subset(sort_ptosh_input, sort_ptosh_input[ ,"最終報告"] == "true")
+    }
     temp_ptosh_output <- data.frame(id = sort_ptosh_input[kPtoshRegistrationNumberColumnIndex])
+    colnames(temp_ptosh_output) <- kRegistration_colname
     for (j in 1:nrow(df_itemlist)) {
       # Get column name from the value of sheet_csv$variable
       column_name <- df_itemlist[j, "variable"]
       # Skip if there is no column with that name
       target_column_name <- paste0("field", df_itemlist[j, "FieldItem.name.tr..field......"])
       target_column_index <- CheckColname(target_column_name, sort_ptosh_input)
-      save_output_colnames <- colnames(temp_ptosh_output)
       if (target_column_index > 0) {
-        if ((df_itemlist[j, "FieldItem.field_type"] == kOption_Ctcae) && !is.na(df_itemlist[j, "FieldItem.field_type"])) {
+        if ((df_itemlist[j, "FieldItem.field_type"] == kOption_ctcae) && !is.na(df_itemlist[j, "FieldItem.field_type"])) {
           if (kCtcae_convertflag == 1) {
             temp_ctcae <- sort_ptosh_input[target_column_index + 1]
           } else {
             temp_ctcae <- sort_ptosh_input[target_column_index]
           }
-          colnames(temp_ctcae) <- kOption_Ctcae
-          temp_ctcae_df <- temp_ctcae %>% separate(kOption_Ctcae, into = c(paste0(column_name, "_term"),
+          colnames(temp_ctcae) <- kOption_ctcae
+          ctcae_term_colname <- paste0(column_name, "_term")
+          temp_ctcae_df <- temp_ctcae %>% separate(kOption_ctcae, into = c(ctcae_term_colname,
                                                                            paste0(column_name, "_grade")), sep = "-")
           temp_ptosh_output <- cbind(temp_ptosh_output, temp_ctcae_df)
-#          colnames(temp_ptosh_output) <- c(save_output_colnames, paste0(column_name, "_term"),
- #                                          paste0(column_name, "_grade"))
-        } else {
-          temp_ptosh_output <- cbind(temp_ptosh_output, sort_ptosh_input[target_column_index])
-          colnames(temp_ptosh_output) <- c(save_output_colnames, column_name)
+        } else if ((df_itemlist[j, "FieldItem.field_type"] == "checkbox") && !is.na(df_itemlist[j, "FieldItem.field_type"])) {
+          temp_checkbox <- subset(option_csv, option_csv$Option.name == df_itemlist[j, "Option.name"])
+          # Create dataframe of number of checkboxes column
+          temp_checkbox_df <- data.frame(matrix(rep(F), ncol=nrow(temp_checkbox), nrow=nrow(sort_ptosh_input)))
+          colnames(temp_checkbox_df) <- temp_checkbox$Option..Value.code
+          checkbox_field_name <- paste0("field", df_itemlist[j, "FieldItem.name.tr..field......"])
+          for (k in 1:nrow(sort_ptosh_input)) {
+            checkbox_field_value <- sort_ptosh_input[k, target_column_name]
+            if (!is.na(checkbox_field_value)) {
+              temp_checkbox_value <- strsplit(as.character(checkbox_field_value), ",")
+              for (m in 1:length(temp_checkbox_value)) {
+                temp_checkbox_df[k, as.character(temp_checkbox_value[m])] <- T
+              }
+            }
+          }
+          colnames(temp_checkbox_df) <- paste0(column_name, "_", temp_checkbox$Option..Value.code)
+          temp_ptosh_output <- cbind(temp_ptosh_output, temp_checkbox_df)
+          df_itemlist[j, "Option.name"] <- NA
+        }
+        else {
+          temp_cbind_column <- sort_ptosh_input[target_column_index]
+          colnames(temp_cbind_column) <- column_name
+          temp_ptosh_output <- cbind(temp_ptosh_output, temp_cbind_column)
         }
         # Set option value
-        if (!is.na(df_itemlist[j, "Option.name"]) | (df_itemlist[j, "FieldItem.field_type"] == kOption_Ctcae)) {
-          if (df_itemlist[j, "FieldItem.field_type"] == kOption_Ctcae) {
+        if (!is.na(df_itemlist[j, "Option.name"]) | (df_itemlist[j, "FieldItem.field_type"] == kOption_ctcae)) {
+          if (df_itemlist[j, "FieldItem.field_type"] == kOption_ctcae) {
             temp_factor <- subset(option_csv, option_csv$Option.name == "CTCAE")
           } else {
             temp_factor <- subset(option_csv, option_csv$Option.name == df_itemlist[j, "Option.name"])
           }
           if (nrow(temp_factor) > 0) {
-            if ((df_itemlist[j, "FieldItem.field_type"] == kOption_Ctcae)
+            if ((df_itemlist[j, "FieldItem.field_type"] == kOption_ctcae)
                 && !is.na(df_itemlist[j, "FieldItem.field_type"])) {
-              temp_factor_colname <- paste0(column_name, "_term")
+              temp_factor_colname <- ctcae_term_colname
             } else {
               temp_factor_colname <- column_name
             }
@@ -136,8 +179,20 @@ for (i in 1:length(alias_name)) {
       }
       assign(ptosh_output, temp_ptosh_output)
     }
-    # Output csv and R_dataframe
-    write.csv(ptosh_output, paste0(output_path, "/", alias_name[i], ".csv"), na='""', row.names=F)
-    save(list=ptosh_output, file=(paste0(output_dst_path, "/", alias_name[i], ".Rda")))
+    # Edit output dataframe
+    if (sheet_category[i] == "ae_report" || sheet_category[i] == "committees_opinion"
+        || sheet_category[i] == "multiple") {
+      OutputDF(ptosh_output, output_path, output_dst_path)
+    } else {
+      # Merge
+      if (!exists(kOutput_DF)) {
+        temp_merge_df <- data.frame(id = get(ptosh_output)[ , kRegistration_colname])
+        colnames(temp_merge_df) <- kRegistration_colname
+        assign(kOutput_DF, temp_merge_df)
+      }
+      assign(kOutput_DF, merge(get(kOutput_DF), get(ptosh_output), by=kRegistration_colname, all=T))
+    }
   }
 }
+# Output merge dataframe
+OutputDF(kOutput_DF, output_path, output_dst_path)
