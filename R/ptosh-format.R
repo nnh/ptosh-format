@@ -45,7 +45,7 @@ CheckColname <- function(col_name, df){
 #' No return value
 OutputDF <- function(df, output_csv_path, output_rda_path){
   # Output csv and R_dataframe
-  write.csv(get(df), paste0(output_csv_path, "/", df, ".csv"), na='""', row.names=F)
+  write.csv(get(df), paste0(output_csv_path, "/", df, ".csv"), na='""', row.names=F, fileEncoding="cp932")
   save(list=df, file=(paste0(output_rda_path, "/", df, ".Rda")))
 }
 # Constant section ------
@@ -110,7 +110,7 @@ for (i in 1:length(alias_name)) {
     sort_ptosh_input <- get(ptosh_input)[sortlist, ]
     # Extract the rows of "最終報告" is true if Sheet.category is "ae_report"
     if (sheet_category[i] == "ae_report") {
-      sort_ptosh_input <- subset(sort_ptosh_input, sort_ptosh_input[ ,"最終報告"] == "true")
+      sort_ptosh_input <- subset(sort_ptosh_input, sort_ptosh_input[ ,"最終報告"] == T)
     }
     temp_ptosh_output <- data.frame(id = sort_ptosh_input[kPtoshRegistrationNumberColumnIndex])
     colnames(temp_ptosh_output) <- kRegistration_colname
