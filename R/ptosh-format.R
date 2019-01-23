@@ -50,7 +50,7 @@ OutputDF <- function(df, output_csv_path, output_rda_path){
 }
 # Constant section ------
 kPtoshRegistrationNumberColumnIndex <- 9  # ptosh_csv$registration_number
-kCtcae_convertflag <- 1
+kCtcae_convertflag <- 0
 kRegistration_colname <- "SUBJID"
 kOption_ctcae <- "ctcae"
 kOutput_DF <- "ptdata"
@@ -77,7 +77,7 @@ if (file.exists(output_dst_path) == F) {
 # Input option.csv
 option_csv <- read.csv(paste0(external_path, "/option.csv"), as.is=T, fileEncoding="utf-8", stringsAsFactors=F)
 # Input sheet.csv, delete rows that 'variable' is NA
-sheet_csv <- read.csv(paste0(external_path, "/testsheet.csv"), as.is=T, na.strings="", fileEncoding="utf-8",
+sheet_csv <- read.csv(paste0(external_path, "/sheet.csv"), as.is=T, na.strings="", fileEncoding="utf-8",
                       stringsAsFactors=F)
 sheet_csv <- subset(sheet_csv, !is.na(sheet_csv$variable) & !is.na(sheet_csv$FieldItem.label))
 # Check for duplicate 'variable'
@@ -128,9 +128,9 @@ for (i in 1:length(alias_name)) {
             temp_ctcae <- sort_ptosh_input[target_column_index]
           }
           colnames(temp_ctcae) <- kOption_ctcae
-          ctcae_term_colname <- paste0(column_name, "_term")
+          ctcae_term_colname <- paste0(column_name, "_trm")
           temp_ctcae_df <- temp_ctcae %>% separate(kOption_ctcae, into = c(ctcae_term_colname,
-                                                                           paste0(column_name, "_grade")), sep = "-")
+                                                                           paste0(column_name, "_grd")), sep = "-")
           temp_ptosh_output <- cbind(temp_ptosh_output, temp_ctcae_df)
         } else if ((df_itemlist[j, "FieldItem.field_type"] == "checkbox") && !is.na(df_itemlist[j, "FieldItem.field_type"])) {
           temp_checkbox <- subset(option_csv, option_csv$Option.name == df_itemlist[j, "Option.name"])
@@ -192,7 +192,14 @@ for (i in 1:length(alias_name)) {
       }
       assign(kOutput_DF, merge(get(kOutput_DF), get(ptosh_output), by=kRegistration_colname, all=T))
     }
+  } else {
+    stop(paste0("No input data", " : ", alias_name[i]))
+    Exit()
   }
 }
 # Output merge dataframe
-OutputDF(kOutput_DF, output_path, output_dst_path)
+if (exists(kOutput_DF)) {
+  OutputDF(kOutput_DF, output_path, output_dst_path)
+} else {
+  warning("No output ptdata")
+}
