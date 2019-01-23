@@ -6,7 +6,6 @@ Date : 2019/01/22
 SAS version : 9.4
 **************************************************************************;
 
-/*aaa*/
 proc datasets library=work kill nolist; quit;
 
 options mprint mlogic symbolgen;
@@ -176,7 +175,7 @@ run;
 
 
 *^^^^^^^^^^Convert FULL-Width Characters to HALF^^^^^^^^^^;
-/*‚È‚ñ‚Å”¼Šp‚É‚·‚é•K—v*/
+/*half-width?*/
 data sheet;
     length c2 $100;
     set sheet;
