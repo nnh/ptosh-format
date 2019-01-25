@@ -2,13 +2,23 @@
 Program Name : ptosh-format.sas
 Purpose : Automatic Data Conversion of Ptosh-based Data to ADS
 Author : Kato Kiroku
-Date : 2019/01/22
+Date : 2019/01/25
 SAS version : 9.4
 **************************************************************************;
 
+/*NOTES*/
+  /*1. This program works only when file paths are as listed below.*/
+      /* (Study Name)  -         input         -      ext      -  option.csv */
+      /* (Study Name)  -         input         -      ext      -  sheet.csv */
+      /* (Study Name)  -         input         -  rawdata  -  (rawdata).csv */
+      /* (Study Name)  -  ptosh-format */
+  /*2. Converted data will be exported to the "ADS" directory shown below.*/
+      /* (Study Name)  -  ptosh-format  -  ads */
+
+
 proc datasets library=work kill nolist; quit;
 
-options mprint mlogic symbolgen;
+options mprint mlogic symbolgen minoperator;
 
 
 *^^^^^^^^^^Find the Current Working Directory^^^^^^^^^^;
@@ -64,6 +74,7 @@ options mprint mlogic symbolgen;
             %let cnt=%eval(&cnt+1);
             %put %qsysfunc(dread(&did, &i));
 
+            *Import only when (rawdata).csv has some data;
             data _NULL_;
                 if eof then call symputx('nobs', _N_-2);
                 infile "&dir.\%qsysfunc(dread(&did, &i))" end=eof;
@@ -74,6 +85,7 @@ options mprint mlogic symbolgen;
 
             %If &nobs>=1 %then %do;
 
+              *Find and remove carriage returns or line breaks in (rawdata).csv;
               data _NULL_;
                   infile "&dir.\%qsysfunc(dread(&did, &i))" recfm=n;
                   file "&tmp.\tmp&cnt..csv" recfm=n;
@@ -118,23 +130,13 @@ options mprint mlogic symbolgen;
 
 *^^^^^^^^^^^^^^^Import Options.csv and Sheet.csv from the "EXT" Directory^^^^^^^^^^^^^^^;
 
-/*proc import datafile="&ext.\sheet.csv"*/
-/*    out=sheet_old*/
-/*    dbms=csv replace;*/
-/*    guessingrows=999;*/
-/*run;*/
-proc import datafile="&ext.\20190117èré˜êÊê∂éÛóÃ\CP932R-miniCHP_sheet.csv"
+proc import datafile="&ext.\sheet.csv"
     out=sheet
     dbms=csv replace;
     guessingrows=999;
 run;
 
-/*proc import datafile="&ext.\option.csv"*/
-/*    out=option_old*/
-/*    dbms=csv replace;*/
-/*    guessingrows=999;*/
-/*run;*/
-proc import datafile="&ext.\20190117èré˜êÊê∂éÛóÃ\CP932R-miniCHP_option.csv"
+proc import datafile="&ext.\option.csv"
     out=option
     dbms=csv replace;
     guessingrows=999;
@@ -175,13 +177,14 @@ run;
 
 
 *^^^^^^^^^^Convert FULL-Width Characters to HALF^^^^^^^^^^;
-/*half-width?*/
+*RSN : Unable to assign variable labels with full-width symbols like "Åi";
+
 data sheet;
     length c2 $100;
     set sheet;
     if Sheet_alias_name=' ' then delete;
-    c1=kpropcase(FieldItem_label, 'full-alphabet, half-alphabet');
-    c2=kpropcase(Option_name, 'full-alphabet, half-alphabet');
+    c1=compress(kpropcase(FieldItem_label, 'full-alphabet, half-alphabet'));
+    c2=compress(kpropcase(Option_name, 'full-alphabet, half-alphabet'));
     drop FieldItem_label Option_name;
     rename c1=FieldItem_label c2=Option_name;
 run;
@@ -189,8 +192,8 @@ run;
 data option;
     length c1 $100;
     set option;
-    c1=kpropcase(Option_name, 'full-alphabet, half-alphabet');
-    c2=kpropcase(Option__Value_name, 'full-alphabet, half-alphabet');
+    c1=compress(kpropcase(Option_name, 'full-alphabet, half-alphabet'));
+    c2=compress(kpropcase(Option__Value_name, 'full-alphabet, half-alphabet'));
     drop Option_name Option__Value_name;
     rename c1=Option_name c2=Option__Value_name;
 run;
@@ -198,13 +201,14 @@ run;
 
 *^^^^^^^^^^Split the "Sheet" Dataset into Multiple Datasets^^^^^^^^^^;
 
+***************************************TEMPORARY*************************;
 data sheet;
-    length c $50;
     set sheet;
-    c=Sheet_alias_name;
-    drop Sheet_alias_name;
-    rename c=Sheet_alias_name;
+    c=CATX('_', Sheet_alias_name, FieldItem_name_tr__field______);
+    drop variable;
+    rename c=variable;
 run;
+***************************************TEMPORARY*************************;
 
 proc sort data=sheet; by Sheet_alias_name; run;
 
@@ -253,7 +257,6 @@ run;
 
 proc format cntlin=option_2; run;
 
-*Data Handling;
 data option_3;
     set option_2;
     by option_name;
@@ -266,11 +269,6 @@ data option_from_sheet;
     if FieldItem_field_type='ctcae' then Option_name='CTCAE';
     if Option_name=' ' then delete;
     field=cats('field', FieldItem_name_tr__field______);
-        ***************************************TEMPORARY*************************;
-        c=CATX('_', Sheet_alias_name, FieldItem_name_tr__field______);
-        drop variable;
-        rename c=variable;
-        ***************************************TEMPORARY*************************;
 run;
 
 proc sort data=option_from_sheet; by option_name; run;
@@ -285,6 +283,32 @@ run;
 proc sort data=option_f; by Sheet_alias_name; run;
 
 
+*^^^^^^^^^^Find Datasets where "FieldItem_field_type"="checkbox"^^^^^^^^^^;
+
+data chbox;
+  set sheet;
+  where FieldItem_field_type='checkbox';
+run;
+
+proc sort data=chbox; by option_name; run;
+
+data chbox_2;
+  merge chbox (in=a) option;
+  by option_name;
+  if a;
+  field=cats('field_', FieldItem_name_tr__field______);
+  new_var=cats(variable, '_op_', Option__Value_code);
+run;
+
+proc sql noprint;
+    select cats(upcase(Sheet_alias_name))
+      into : _ch_dslist_ separated by " "
+    from chbox;
+quit;
+
+%put &_ch_dslist_;
+
+
 *^^^^^^^^^^Data Integration Macro^^^^^^^^^^;
 
 %macro INTEGRATE (ds);
@@ -294,11 +318,6 @@ proc sort data=option_f; by Sheet_alias_name; run;
         set sheet_&ds.;
         if FieldItem_field_type=' ' then delete;
         field=cats('field', FieldItem_name_tr__field______);
-        ***************************************TEMPORARY*************************;
-        c=CATX('_', Sheet_alias_name, FieldItem_name_tr__field______);
-        drop variable;
-        rename c=variable;
-        ***************************************TEMPORARY*************************;
     run;
 
     *Create Macro Variables;
@@ -458,9 +477,8 @@ proc sort data=option_f; by Sheet_alias_name; run;
     %put &_CTCAE_VAR_.;
     %put &_CTCAE_FRM_.;
 
-
     *Convert Character Variables Specified Above;
-    %macro CONVERT (varlist1, varlist2, varlist3, varlist4, varlist5);
+    %macro CONVERT_1 (varlist1, varlist2, varlist3, varlist4, varlist5);
 
         *to NUMERIC;
         %local i v1;
@@ -500,11 +518,11 @@ proc sort data=option_f; by Sheet_alias_name; run;
           %end;
         %end;
 
-    %mend CONVERT;
+    %mend CONVERT_1;
 
     data &ds._2;
         set &ds.;
-        %CONVERT (&_NUM_., &_DATE_., &_CTCAE_FLD_., &_CTCAE_LAB_., &_CTCAE_VAR_.);
+        %CONVERT_1 (&_NUM_., &_DATE_., &_CTCAE_FLD_., &_CTCAE_LAB_., &_CTCAE_VAR_.);
     run;
 
     *Put FORMAT, KEEP, LABEL and RENAME Statement;
@@ -516,10 +534,113 @@ proc sort data=option_f; by Sheet_alias_name; run;
         rename VAR9=SUBJID &_RENAME_.;
     run;
 
+    *Create variables if data has "checkbox" type;
+    %if %upcase(&ds.) in (&_ch_dslist_.) %then %do;
+
+        %macro CONVERT_2 (ds);
+            %local n i j k;
+  
+              data chbox_3;
+                set chbox_2;
+                where Sheet_alias_name="&ds.";
+                keep Sheet_alias_name Option_name Option__Value_code
+                Option__Value_code_type Option__Value_name field new_var;
+              run;
+
+              proc sql noprint;
+  
+                select cats(variable)
+                  into : _var_ separated by " "
+                from chbox
+                  where Sheet_alias_name="&ds.";
+
+                select cats(new_var)
+                  into : _ch_new_varlist_ separated by " "
+                from chbox_3;
+
+                select catx('=', new_var, quote(trim(Option__Value_name), "'"))
+                  into : _ch_lab_ separated by " "
+                from chbox_3;
+
+              quit;
+
+              %put &_var_;
+              %put &_ch_new_varlist_;
+              %put &_ch_lab_;
+
+              data xxx_&ds.;
+                length &_ch_new_varlist_. $8;
+                set xxx_&ds.;
+        /*        TEMP*/
+        /*        c=input(&_var_, $12.);*/
+        /*        drop &_var_;*/
+        /*        rename c=&_var_;*/
+        /*        TEMP*/
+                label &_ch_lab_.;
+                array AR(*) &_ch_new_varlist_.;
+                do n=1 to dim(AR);
+                  AR(n)='F';
+                end;
+              run;
+
+              data xxx_&ds.;
+                set xxx_&ds.;
+                %do i=1 %to %sysfunc(countw(&_var_));
+                  %let v1=%scan(&_var_, &i);
+                  comma_&i=countw(&v1. , ',');
+                  if &v1.=' ' then comma_&i=999;
+                %end;
+              run;
+
+              %do i=1 %to %sysfunc(countw(&_var_));
+    
+                proc sql noprint;
+                  select cats(comma_&i)
+                    into : number_&i separated by " "
+                  from xxx_&ds.;
+                quit;
+
+                %put &v1;
+                %put &&number_&i;
+  
+                %do j=1 %to %sysfunc(countw(&&number_&i));
+                  %let ind_&j=%scan(&&number_&i, &j);
+      
+                  %put &&ind_&j;
+
+                  %if &&ind_&j NE 999 %then %do;
+
+                    %do k=1 %to &&ind_&j;
+                      data xxx_&ds.;
+                        set xxx_&ds.;
+                        if comma_&i=&&ind_&j then do;
+                          array AR(*) &_ch_new_varlist_;
+                          AR(scan(&v1, &k, ','))='T';
+                        end;
+                      run;
+                    %end;
+
+                  %end;
+                %end;        
+              %end;
+
+              data xxx_&ds.;
+                format SUBJID &_var_;
+                set xxx_&ds.; 
+                drop n;
+                %do i=1 %to %sysfunc(countw(&_var_));
+                  drop comma_&i;
+                %end;
+              run;
+
+        %mend CONVERT_2;
+
+        %CONVERT_2 (&ds.);
+
+    %end;
+
     *Sort by SUBJID (number);
     proc sort data=xxx_&ds. sortseq=linguistic (numeric_collation=on); by SUBJID; run;
-
-    options minoperator;
 
     *Export Datasets to the "ADS" Directory (only AE, SAE_REPORT and COMMITTEES_OPINION);
     %if %upcase(&ds.) in (AE SAE_REPORT COMMITTEES_OPINION) %then %do;
@@ -533,9 +654,6 @@ proc sort data=option_f; by Sheet_alias_name; run;
     proc sort data=xxx_&ds.; by SUBJID; run;
 
 %mend INTEGRATE;
-
-%integrate (sae_report);
-
 
 
 *Execute the MACRO (INTEGRATE);
@@ -582,67 +700,3 @@ run;
 
 
 *__________EoF__________;
-
-
-data pppp;
-  set sheet;
-  where FieldItem_field_type='checkbox';
-run;
-
-proc sort data=pppp; by option_name; run;
-
-data ppppp;
-  merge pppp (in=a) option;
-  by option_name;
-  if a;
-run;
-
-data ppppp;
-  set ppppp;
-  where Sheet_alias_name='sae_report';
-  field=cats('field_', FieldItem_name_tr__field______);
-  v=cats(field, '_op_', Option__Value_code);
-/*  keep v Sheet_alias_name Option_name Option__Value_code Option__Value_code_type Option__Value_name field;*/
-run;
-
-proc sql noprint;
-    select cats(v)
-      into : pap separated by " "
-    from ppppp;
-quit;
-
-proc sql noprint;
-    select catx('=', v, quote(trim(Option__Value_name)))
-      into : pip separated by " "
-    from ppppp;
-quit;
-
-%put &pap;
-%put &pip;
-
-data Xxx_sae_report;
-  length &pap $8;
-  set Xxx_sae_report;
-  label &pip;
-  array AR(*) &pap;
-  do i=1 to dim(AR);
-    AR(i)='F';
-  end;
-  c='1,2,6';
-  keep field_6_op_1 field_6_op_2 field_6_op_3 field_6_op_4 field_6_op_5
-field_6_op_6 field_6_op_7 c;
-rename c=sae_report_6;
-run;
-
-data a;
-  set Xxx_sae_report;
-  array AR(*) &pap;
-/*  do i=1 to dim(AR);*/
-    commas=countw(sae_report_6 , ',');
-/*    do n=1 to commas;*/
-/*      scan(sae_report_6, ',', n)*/
-/*      if sae_report_6=i then AR(i)='T';*/
-/*    end;*/
-/*  end;*/
-/*  drop i;*/
-run;
