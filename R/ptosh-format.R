@@ -138,9 +138,29 @@ CreateCheckboxColumns <- function(ptosh_input, sheet_csv, ptosh_column_name){
 #' Extract records from option.csv
 #' @param
 #' target_name : The value of Option.name
+#' @return
+#' data frame
 ExtractOptionCsv <- function(target_name){
   df <- subset(option_csv, option_csv$Option.name == target_name)
   return(df)
+}
+#' @title
+#' check unique value
+#' @param
+#' input_df : dataframe for the check
+#' duplicated_df : dataframe for the result output
+#' column_name : column name for the check
+#' @return
+#' data frame
+CheckDuplicated <- function(input_df, duplicated_df, column_name){
+  temp_df <- input_df[duplicated(input_df[ ,column_name]) | duplicated(input_df[ ,column_name],fromLast=T), ]
+  if (nrow(temp_df) != 0) {
+    temp_df <- cbind(rownames(temp_df), temp_df)
+    output_df <- rbind(duplicated_df, temp_df)
+  } else {
+    output_df <- duplicated_df
+  }
+  return(output_df)
 }
 
 # Constant section ------
@@ -150,6 +170,7 @@ kCtcae_convertflag <- 0
 kRegistration_colname <- "SUBJID"
 kOption_ctcae <- "ctcae"
 kOutput_DF <- "ptdata"
+kMerge_excluded_sheet_category <- c("ae_report", "committees_opinion", "multiple")
 
 # Initialize ------
 Sys.setenv("TZ" = "Asia/Tokyo")
@@ -175,21 +196,30 @@ option_csv <- read.csv(paste0(external_path, "/option.csv"), as.is=T, fileEncodi
 sheet_csv <- read.csv(paste0(external_path, "/sheet.csv"), as.is=T, na.strings="", fileEncoding="utf-8",
                       stringsAsFactors=F)
 sheet_csv <- subset(sheet_csv, !is.na(sheet_csv$variable) & !is.na(sheet_csv$FieldItem.label))
+unique_sheet_csv <- sheet_csv[!duplicated(sheet_csv["Sheet.alias_name"]), ]
+alias_name <- unique_sheet_csv$Sheet.alias_name
+sheet_category <- unique_sheet_csv$Sheet.category
+merge_excluded_alias_name <- unique_sheet_csv[which(unique_sheet_csv$Sheet.category
+                                                         %in% kMerge_excluded_sheet_category),"Sheet.alias_name"]
+merge_alias_name <- alias_name[-which(alias_name %in% merge_excluded_alias_name)]
+# Create an empty data frame
+df_duplicated <- data.frame(matrix(rep(NA, ncol(sheet_csv) + 1), nrow=1))[numeric(0), ]
+for (i in 1:length(merge_excluded_alias_name)) {
+  temp_duplicated_df <- subset(sheet_csv, sheet_csv$Sheet.alias_name == merge_excluded_alias_name[i])
+  df_duplicated <- CheckDuplicated(temp_duplicated_df, df_duplicated, "variable")
+}
+temp_duplicated_df <- subset(sheet_csv, sheet_csv$Sheet.alias_name %in% merge_alias_name)
+df_duplicated <- CheckDuplicated(temp_duplicated_df, df_duplicated, "variable")
 # Check for duplicate 'variable'
 # Check overlap from the beginning and end, OR of both
-df_duplicated <- sheet_csv[duplicated(sheet_csv$variable) | duplicated(sheet_csv$variable, fromLast=T), ]
 if (nrow(df_duplicated) != 0) {
-  df_duplicated <- cbind(rownames(df_duplicated), df_duplicated)
-  names(df_duplicated)[1] <- "row"
+  colnames(df_duplicated) <- c("row", colnames(sheet_csv))
   write.csv(df_duplicated, paste0(output_path, "/variable_duplicated.csv"), row.names=F, fileEncoding="cp932")
   stop("Duplicate variable name")
   Exit()
 }
 # Input ptosh_csv ------
 # Set ptosh_csv's name list
-unique_sheet_csv <- sheet_csv[!duplicated(sheet_csv["Sheet.alias_name"]), ]
-alias_name <- unique_sheet_csv$Sheet.alias_name
-sheet_category <- unique_sheet_csv$Sheet.category
 file_list <- list.files(input_path)
 for (i in 1:length(alias_name)) {
   file_index <- grep(paste0("_", alias_name[i] , "_"), file_list)
@@ -259,9 +289,8 @@ for (i in 1:length(alias_name)) {
       assign(ptosh_output, temp_ptosh_output)
     }
     # Edit output dataframe
-    if (sheet_category[i] == "ae_report" || sheet_category[i] == "committees_opinion"
-        || sheet_category[i] == "multiple") {
-      OutputDF(ptosh_output, output_path, output_dst_path)
+    if (sheet_category[i] %in% kMerge_excluded_sheet_category) {
+            OutputDF(ptosh_output, output_path, output_dst_path)
     } else {
       # Merge
       if (!exists(kOutput_DF)) {
