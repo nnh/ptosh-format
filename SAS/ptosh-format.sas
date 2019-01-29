@@ -2,7 +2,7 @@
 Program Name : ptosh-format.sas
 Purpose : Automatic Data Conversion of Ptosh-based Data to ADS
 Author : Kato Kiroku
-Date : 2019/01/25
+Date : 2019/01/28
 SAS version : 9.4
 **************************************************************************;
 
@@ -183,6 +183,7 @@ data sheet;
     length c2 $100;
     set sheet;
     if Sheet_alias_name=' ' then delete;
+/*    if variable=' ' then delete;*/
     c1=compress(kpropcase(FieldItem_label, 'full-alphabet, half-alphabet'));
     c2=compress(kpropcase(Option_name, 'full-alphabet, half-alphabet'));
     drop FieldItem_label Option_name;
@@ -197,6 +198,45 @@ data option;
     drop Option_name Option__Value_name;
     rename c1=Option_name c2=Option__Value_name;
 run;
+
+
+/**/
+/*proc freq data=sheet noprint;*/
+/*  tables variable / out=sheet_temp;*/
+/*  by Sheet_alias_name;*/
+/*run;*/
+/**/
+/*proc sql noprint;*/
+/*    select cats(variable)*/
+/*      into : warning separated by " "*/
+/*    from Sheet_temp*/
+/*      where count>=2;*/
+/*    *In Case There is NOTHING Found Above, Let "_KEEP_" Hold " " (NULL);*/
+/*    select " "*/
+/*      into : warning separated by " "*/
+/*    from Sheet_temp*/
+/*      where not exists (select * from Sheet_temp where count>=2);*/
+/*    %let warning=&warning;*/
+/*quit;*/
+/**/
+/*%put &warning;*/
+/**/
+/*data sheet_output;*/
+/*  set sheet;*/
+/*  if variable="&warning." then output;*/
+/*run;*/
+/**/
+/*proc export data=sheet_output*/
+/*    outfile="&ads.\variable_duplicated.csv"*/
+/*    dbms=csv replace;*/
+/*run;*/
+/**/
+/*data sheet_temp_2;*/
+/*  set sheet_temp;*/
+/*  if count>=2 then put "WARNING: •Ï”–¼ &warning. ‚Íd•¡‚µ‚Ä‚¢‚Ü‚·B";*/
+/*  if count>=2 then stop;*/
+/*run;*/
+/**/
 
 
 *^^^^^^^^^^Split the "Sheet" Dataset into Multiple Datasets^^^^^^^^^^;
@@ -285,6 +325,27 @@ proc sort data=option_f; by Sheet_alias_name; run;
 
 *^^^^^^^^^^Find Datasets where "FieldItem_field_type"="checkbox"^^^^^^^^^^;
 
+%macro confirm;
+
+%global _ch_dslist_;
+
+proc sql noprint;
+    select cats(upcase(Sheet_alias_name))
+      into : _ch_dslist_ separated by " "
+    from sheet
+      where FieldItem_field_type="checkbox";
+    *In Case There is NOTHING Found Above, Let "_KEEP_" Hold " " (NULL);
+    select " "
+      into : _ch_dslist_ separated by " "
+    from sheet
+      where not exists (select * from sheet where FieldItem_field_type="checkbox");
+    %let _ch_dslist_=&_ch_dslist_;
+quit;
+
+%put &_ch_dslist_;
+
+%if &_ch_dslist_ NE %then %do;
+
 data chbox;
   set sheet;
   where FieldItem_field_type='checkbox';
@@ -300,11 +361,13 @@ data chbox_2;
   new_var=cats(variable, '_op_', Option__Value_code);
 run;
 
-proc sql noprint;
-    select cats(upcase(Sheet_alias_name))
-      into : _ch_dslist_ separated by " "
-    from chbox;
-quit;
+%end;
+
+%if &_ch_dslist_= %then %let _ch_dslist_="_NOTHING_FOUND_";
+
+%mend confirm;
+
+%confirm;
 
 %put &_ch_dslist_;
 
@@ -328,6 +391,11 @@ quit;
         into : _KEEP_ separated by " "
       from sheet_&ds.
         where FieldItem_field_type NE "ctcae";
+      *In Case There is NOTHING Found Above, Let "_KEEP_" Hold " " (NULL);
+      select " "
+        into : _KEEP_ separated by " "
+      from sheet_&ds.
+        where not exists (select * from sheet_&ds. where FieldItem_field_type NE "ctcae");
       %let _KEEP_=&_KEEP_;
 
       *"_LABEL_" holds "field='FieldItem_label'" for Label Statement;
@@ -335,6 +403,11 @@ quit;
         into : _LABEL_ separated by " "
       from sheet_&ds.
         where FieldItem_field_type NE "ctcae";
+      *In Case There is NOTHING Found Above, Let "_LABEL_" Hold " " (NULL);
+      select " "
+        into : _LABEL_ separated by " "
+      from sheet_&ds.
+        where not exists (select * from sheet_&ds. where FieldItem_field_type NE "ctcae");
       %let _LABEL_=&_LABEL_;
 
       *"_RENAME_" holds "field=variable" for Rename Statement;
@@ -342,6 +415,11 @@ quit;
         into : _RENAME_ separated by " "
       from sheet_&ds.
         where FieldItem_field_type NE "ctcae";
+      *In Case There is NOTHING Found Above, Let "_RENAME_" Hold " " (NULL);
+      select " "
+        into : _RENAME_ separated by " "
+      from sheet_&ds.
+        where not exists (select * from sheet_&ds. where FieldItem_field_type NE "ctcae");
       %let _RENAME_=&_RENAME_;
 
       *"_NUM_" holds "field" for Numeric Conversion;
@@ -381,7 +459,8 @@ quit;
       select " "
         into : _FORM_ separated by " "
       from option_f
-        where not exists (select * from option_f where Sheet_alias_name="&ds.");
+        where not exists (select * from option_f where Sheet_alias_name="&ds."
+        and FieldItem_field_type='num');
       %let _FORM_=&_FORM_;
 
       *"_CTCAE_FLD_" holds "field" for CTCAE Conversion;
@@ -538,36 +617,42 @@ quit;
     %if %upcase(&ds.) in (&_ch_dslist_.) %then %do;
 
         %macro CONVERT_2 (ds);
+
             %local n i j k;
-  
+
               data chbox_3;
                 set chbox_2;
                 where Sheet_alias_name="&ds.";
-                keep Sheet_alias_name Option_name Option__Value_code
-                Option__Value_code_type Option__Value_name field new_var;
+                keep Sheet_alias_name Option_name Option__Value_code Option__Value_code_type Option__Value_name field new_var;
               run;
 
+              *Create Macro Variables;
               proc sql noprint;
   
+                *"_var_" holds "variable" to list variables which have "checkbox" type in one dataset;
                 select cats(variable)
                   into : _var_ separated by " "
                 from chbox
                   where Sheet_alias_name="&ds.";
 
+                *"_ch_new_varlist_" holds "new_var" to create new variables;
                 select cats(new_var)
                   into : _ch_new_varlist_ separated by " "
                 from chbox_3;
 
+                *"_ch_lab_" holds "new_var='Option__Value_name'" to label new variables;
                 select catx('=', new_var, quote(trim(Option__Value_name), "'"))
                   into : _ch_lab_ separated by " "
                 from chbox_3;
 
               quit;
 
+              *Display Macro Variables in Log Window (to check);
               %put &_var_;
               %put &_ch_new_varlist_;
               %put &_ch_lab_;
 
+                *Create new variables;
               data xxx_&ds.;
                 length &_ch_new_varlist_. $8;
                 set xxx_&ds.;
@@ -579,7 +664,7 @@ quit;
                 label &_ch_lab_.;
                 array AR(*) &_ch_new_varlist_.;
                 do n=1 to dim(AR);
-                  AR(n)='F';
+                  AR(n)='FALSE';
                 end;
               run;
 
@@ -615,7 +700,7 @@ quit;
                         set xxx_&ds.;
                         if comma_&i=&&ind_&j then do;
                           array AR(*) &_ch_new_varlist_;
-                          AR(scan(&v1, &k, ','))='T';
+                          AR(scan(&v1, &k, ','))='TRUE';
                         end;
                       run;
                     %end;
@@ -654,7 +739,6 @@ quit;
     proc sort data=xxx_&ds.; by SUBJID; run;
 
 %mend INTEGRATE;
-
 
 *Execute the MACRO (INTEGRATE);
 
