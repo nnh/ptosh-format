@@ -1,6 +1,15 @@
 # Format Ptosh data for analysis program
 # Created date: 2018/12/19
 # Author: mariko ohtsuka
+# Output log ------
+Sys.setenv("TZ" = "Asia/Tokyo")
+parent_path <- "/Users/admin/Desktop/NHOH-R-miniCHP"
+# log output path
+log_path <- paste0(parent_path, "/log")
+if (file.exists(log_path) == F) {
+  dir.create(log_path)
+}
+sink(paste0(log_path, "/log.txt"))
 
 # library, function section ------
 # install.packages("tidyr")
@@ -45,7 +54,7 @@ CheckColname <- function(col_name, df){
 #' No return value
 OutputDF <- function(df, output_csv_path, output_rda_path){
   # Output csv and R_dataframe
-  write.csv(get(df), paste0(output_csv_path, "/", df, ".csv"), na='""', row.names=F, fileEncoding="cp932")
+  write.csv(get(df), paste0(output_csv_path, "/", df, ".csv"), na='""', row.names=F, fileEncoding="cp932", eol="\r\n")
   save(list=df, file=(paste0(output_rda_path, "/", df, ".Rda")))
 }
 #' @title
@@ -173,11 +182,9 @@ kOutput_DF <- "ptdata"
 kMerge_excluded_sheet_category <- c("ae_report", "committees_opinion", "multiple")
 
 # Initialize ------
-Sys.setenv("TZ" = "Asia/Tokyo")
 if (exists(kOutput_DF)) {
   rm(list=kOutput_DF)
 }
-parent_path <- "/Users/admin/Desktop/NHOH-R-miniCHP"
 # Setting of input/output path
 input_path <- paste0(parent_path, "/input")
 external_path <<- paste0(parent_path, "/external")
@@ -254,16 +261,19 @@ for (i in 1:length(alias_name)) {
           ctcae_term_colname <- paste0(column_name, "_trm")
           ctcae_grade_colname <- paste0(column_name, "_grd")
           temp_cbind_column <- SplitCtcae(sort_ptosh_input, target_column_index, ctcae_term_colname, ctcae_grade_colname)
-        } else if ((df_itemlist[j, "FieldItem.field_type"] == "checkbox")
-                   && !is.na(df_itemlist[j, "FieldItem.field_type"])) {
-          temp_cbind_column <- CreateCheckboxColumns(sort_ptosh_input, df_itemlist[j, ], target_column_name)
-          df_itemlist[j, "Option.name"] <- NA
-                  }
+        }
         else {
           temp_cbind_column <- sort_ptosh_input[target_column_index]
           colnames(temp_cbind_column) <- column_name
         }
         temp_ptosh_output <- cbind(temp_ptosh_output, temp_cbind_column)
+        # Checkbox
+        if ((df_itemlist[j, "FieldItem.field_type"] == "checkbox")
+            && !is.na(df_itemlist[j, "FieldItem.field_type"])) {
+          temp_cbind_column <- CreateCheckboxColumns(sort_ptosh_input, df_itemlist[j, ], target_column_name)
+          temp_ptosh_output <- cbind(temp_ptosh_output, temp_cbind_column)
+          df_itemlist[j, "Option.name"] <- NA
+        }
         # Set option value
         if (!is.na(df_itemlist[j, "Option.name"]) | (df_itemlist[j, "FieldItem.field_type"] == kOption_ctcae)) {
           if (df_itemlist[j, "FieldItem.field_type"] == kOption_ctcae) {
@@ -311,3 +321,5 @@ if (exists(kOutput_DF)) {
 } else {
   warning("No output ptdata")
 }
+# Reset the log output destination
+sink()
