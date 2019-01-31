@@ -264,6 +264,10 @@ for (i in 1:length(alias_name)) {
         }
         else {
           temp_cbind_column <- sort_ptosh_input[target_column_index]
+          # Convert from character to date if field type is date
+          if (df_itemlist[j, "FieldItem.field_type"] == "date") {
+            temp_cbind_column[1] <- as.Date(apply(temp_cbind_column, 1, as.character))
+          }
           colnames(temp_cbind_column) <- column_name
         }
         temp_ptosh_output <- cbind(temp_ptosh_output, temp_cbind_column)
