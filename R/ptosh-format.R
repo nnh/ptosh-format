@@ -54,7 +54,8 @@ CheckColname <- function(col_name, df){
 #' No return value
 OutputDF <- function(df, output_csv_path, output_rda_path){
   # Output csv and R_dataframe
-  write.csv(get(df), paste0(output_csv_path, "/", df, ".csv"), na='""', row.names=F, fileEncoding="cp932", eol="\r\n")
+  write.csv(get(df), paste0(output_csv_path, "/", df, ".csv"), na='""', row.names=F,
+            fileEncoding=kOutput_csv_fileEncoding, eol=kOutput_csv_eol)
   save(list=df, file=(paste0(output_rda_path, "/", df, ".Rda")))
 }
 #' @title
@@ -180,6 +181,12 @@ kRegistration_colname <- "SUBJID"
 kOption_ctcae <- "ctcae"
 kOutput_DF <- "ptdata"
 kMerge_excluded_sheet_category <- c("ae_report", "committees_opinion", "multiple")
+kSheet_csv_fileEncoding <- "cp932"
+kOption_csv_fileEncoding <- "utf-8"
+kOutput_csv_fileEncoding <- "cp932"
+kOutput_csv_eol <- "\r\n"  # output_csv's line feed code
+kSheet_csv_name <- "sheet.csv"
+kOption_csv_name <- "option.csv"
 
 # Initialize ------
 if (exists(kOutput_DF)) {
@@ -189,8 +196,12 @@ if (exists(kOutput_DF)) {
 input_path <- paste0(parent_path, "/input")
 external_path <<- paste0(parent_path, "/external")
 # If the output folder does not exist, create it
+output_variable_path <- paste0(parent_path, "/variable_list")
 output_path <- paste0(parent_path, "/output")
 output_dst_path <- paste0(output_path, "/dst")
+if (file.exists(output_variable_path) == F) {
+  dir.create(output_variable_path)
+}
 if (file.exists(output_path) == F) {
   dir.create(output_path)
 }
@@ -198,10 +209,11 @@ if (file.exists(output_dst_path) == F) {
   dir.create(output_dst_path)
 }
 # Input option.csv
-option_csv <- read.csv(paste0(external_path, "/option.csv"), as.is=T, fileEncoding="utf-8", stringsAsFactors=F)
+option_csv <- read.csv(paste0(external_path, "/", kOption_csv_name), as.is=T, fileEncoding=kOption_csv_fileEncoding,
+                       stringsAsFactors=F)
 # Input sheet.csv, delete rows that 'variable' is NA
-sheet_csv <- read.csv(paste0(external_path, "/sheet.csv"), as.is=T, na.strings="", fileEncoding="utf-8",
-                      stringsAsFactors=F)
+sheet_csv <- read.csv(paste0(external_path, "/", kSheet_csv_name), as.is=T, na.strings="",
+                      fileEncoding=kSheet_csv_fileEncoding, stringsAsFactors=F)
 sheet_csv <- subset(sheet_csv, !is.na(sheet_csv$variable) & !is.na(sheet_csv$FieldItem.label))
 unique_sheet_csv <- sheet_csv[!duplicated(sheet_csv["Sheet.alias_name"]), ]
 alias_name <- unique_sheet_csv$Sheet.alias_name
@@ -325,5 +337,8 @@ if (exists(kOutput_DF)) {
 } else {
   warning("No output ptdata")
 }
+# Output variable name list
+output_sheet_csv <- sheet_csv[ ,c("Sheet.alias_name", "FieldItem.label", "variable")]
+OutputDF("output_sheet_csv", output_variable_path, output_variable_path)
 # Reset the log output destination
 sink()
