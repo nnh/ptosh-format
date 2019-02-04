@@ -181,8 +181,8 @@ kRegistration_colname <- "SUBJID"
 kOption_ctcae <- "ctcae"
 kOutput_DF <- "ptdata"
 kMerge_excluded_sheet_category <- c("ae_report", "committees_opinion", "multiple")
-kSheet_csv_fileEncoding <- "cp932"
-kOption_csv_fileEncoding <- "utf-8"
+kSheet_csv_fileEncoding <- "utf-8"
+kOption_csv_fileEncoding <- "cp932"
 kOutput_csv_fileEncoding <- "cp932"
 kOutput_csv_eol <- "\r\n"  # output_csv's line feed code
 kSheet_csv_name <- "sheet.csv"
