@@ -2,7 +2,7 @@
 Program Name : ptosh-format.sas
 Purpose : Automatic Data Conversion of Ptosh-based Data to ADS
 Author : Kato Kiroku
-Date : 2019-02-04
+Date : 2019-02-05
 SAS version : 9.4
 **************************************************************************;
 
@@ -80,15 +80,13 @@ data sheet;
     *Delete blanks;
     c=compress(variable); drop variable; rename c=variable;
     field=cats('field', FieldItem_name_tr__field______);
-    *Delete full-width and half-width trailing blanks;
-    op=ktrim(Option_name); drop Option_name; rename op=Option_name;
+    op=Option_name; drop Option_name; rename op=Option_name;
 run;
 
 data option;
     length op $100;
     set option;
-    *Delete full-width and half-width trailing blanks;
-    op=ktrim(Option_name); drop Option_name; rename op=Option_name;
+    op=Option_name; drop Option_name; rename op=Option_name;
 run;
 
 
@@ -362,7 +360,7 @@ data option_f;
     merge option_from_sheet option_3;
     by Option_name;
     if FieldItem_field_type='check' then delete;
-/*    keep Sheet_alias_name field FMTNAME FieldItem_field_type variable;*/
+    keep Sheet_alias_name field FMTNAME FieldItem_field_type variable;
 run;
 
 proc sort data=option_f; by Sheet_alias_name; run;
@@ -609,16 +607,16 @@ proc sort data=option_f; by Sheet_alias_name; run;
         %end;
 
         *to DATE-FORMAT;
-/*        %local i v2;*/
-/*        %if &_DATE_. ne %then %do;*/
-/*          %do i=1 %to %sysfunc(countw(&varlist2));*/
-/*            %let v2=%scan(&varlist2, &i);*/
-/*            _d_&i=input(&v2, YYMMDD10.);*/
-/*            format _d_&i YYMMDD10.;*/
-/*            drop &v2;*/
-/*            rename _d_&i=&v2;*/
-/*          %end;*/
-/*        %end;*/
+        %local i v2;
+        %if &_DATE_. ne %then %do;
+          %do i=1 %to %sysfunc(countw(&varlist2));
+            %let v2=%scan(&varlist2, &i);
+            _d_&i=input(&v2, YYMMDD10.);
+            format _d_&i YYMMDD10.;
+            drop &v2;
+            rename _d_&i=&v2;
+          %end;
+        %end;
 
         *to CTCAE-FORMAT;
         %local i v3 v4 v5;
