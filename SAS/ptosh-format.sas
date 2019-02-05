@@ -49,6 +49,7 @@ options mprint mlogic symbolgen minoperator;
 libname libraw "&cwd.\input\rawdata" access=readonly;
 libname libext "&cwd.\input\ext" access=readonly;
 libname libads "&cwd.\ptosh-format\ads";
+libname library "&cwd.\ptosh-format\ads\format";
 
 %let raw=&cwd.\input\rawdata;
 %let ext=&cwd.\input\ext;
@@ -335,7 +336,7 @@ data option_2;
     rename Option__Value_code=START Option__Value_name=LABEL;
 run;
 
-proc format cntlin=option_2; run;
+proc format cntlin=option_2 library=library; run;
 
 *Create new dataset from the "Option" dataset for further format statements;
 data option_3;
