@@ -3,7 +3,7 @@
 # Author: mariko ohtsuka
 # Output log ------
 Sys.setenv("TZ" = "Asia/Tokyo")
-parent_path <- "/Users/admin/Desktop/ptosh-format"
+parent_path <- "/Users/admin/Desktop/NMC-RocStent"
 # log output path
 log_path <- paste0(parent_path, "/log")
 if (file.exists(log_path) == F) {
@@ -135,9 +135,9 @@ CreateCheckboxColumns <- function(ptosh_input, sheet_csv, ptosh_column_name){
     checkbox_field_value <- ptosh_input[i, ptosh_column_name]
     if (!is.na(checkbox_field_value)) {
       # If multiple values, split by ','
-      temp_checkbox_value <- strsplit(as.character(checkbox_field_value), ",")
+      temp_checkbox_value <- unlist(strsplit(as.character(checkbox_field_value), ","))
       for (j in 1:length(temp_checkbox_value)) {
-        checkbox_df[i, as.character(temp_checkbox_value[j])] <- T
+        checkbox_df[i, as.numeric(temp_checkbox_value[j])] <- T
       }
     }
   }
@@ -181,7 +181,7 @@ kRegistration_colname <- "SUBJID"
 kOption_ctcae <- "ctcae"
 kOutput_DF <- "ptdata"
 kMerge_excluded_sheet_category <- c("ae_report", "committees_opinion", "multiple")
-kSheet_csv_fileEncoding <- "utf-8"
+kSheet_csv_fileEncoding <- "cp932"
 kOption_csv_fileEncoding <- "cp932"
 kOutput_csv_fileEncoding <- "cp932"
 kOutput_csv_eol <- "\r\n"  # output_csv's line feed code
