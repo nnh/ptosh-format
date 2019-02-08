@@ -3,7 +3,7 @@
 # Author: mariko ohtsuka
 # Output log ------
 Sys.setenv("TZ" = "Asia/Tokyo")
-parent_path <- "/Users/admin/Desktop/NHOH-R-miniCHP"
+parent_path <- "/Users/admin/Desktop/ptosh-format"
 # log output path
 log_path <- paste0(parent_path, "/log")
 if (file.exists(log_path) == F) {
@@ -256,7 +256,7 @@ for (i in 1:length(alias_name)) {
     sort_ptosh_input <- get(ptosh_input)[sortlist, ]
     # Extract the rows of "最終報告" is true if Sheet.category is "ae_report"
     if (sheet_category[i] == "ae_report") {
-      sort_ptosh_input <- subset(sort_ptosh_input, sort_ptosh_input[ ,"最終報告"] == T)
+      sort_ptosh_input <- subset(sort_ptosh_input, sort_ptosh_input[ ,"最終報告"] == "true")
     }
     # Create data frame with registration number only
     temp_ptosh_output <- data.frame(id = sort_ptosh_input[kPtoshRegistrationNumberColumnIndex])
