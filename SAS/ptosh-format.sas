@@ -2,7 +2,7 @@
 Program Name : ptosh-format.sas
 Purpose : Automatic Data Conversion of Ptosh-based Data to ADS
 Author : Kato Kiroku
-Date : 2019-02-05
+Date : 2019-02-20
 SAS version : 9.4
 **************************************************************************;
 
@@ -49,7 +49,7 @@ options mprint mlogic symbolgen minoperator;
 libname libraw "&cwd.\input\rawdata" access=readonly;
 libname libext "&cwd.\input\ext" access=readonly;
 libname libads "&cwd.\ptosh-format\ads";
-libname library "&cwd.\ptosh-format\ads\format";
+libname library "&cwd.\ptosh-format\ads";
 
 %let raw=&cwd.\input\rawdata;
 %let ext=&cwd.\input\ext;
@@ -229,45 +229,53 @@ run;
 %macro CHANGE_DS_NAME;
 
     %do i=1 %to &cnt;
+      %if %sysfunc(exist(tmp&i.)) %then %do;
 
-      data tmp&i.;
-          length c $50;
-          set tmp&i.;
-          *Convert '-' to '_' because it is impossible to use the '-' symbol as a variable name;
-          c=translate(VAR1, '_', '-');
-          drop VAR1;
-          rename c=VAR1;
-      run;
+        data tmp&i.;
+            length c $50;
+            set tmp&i.;
+            *Convert '-' to '_' because it is impossible to use the '-' symbol as a variable name;
+            c=translate(VAR1, '_', '-');
+            drop VAR1;
+            rename c=VAR1;
+        run;
 
-      data _NULL_;
-          set tmp&i.;
-          by VAR1;
-          if first.VAR1 then call symputx("NAME", VAR1);
-      run;
+        proc sort data=tmp&i.; by VAR1; run;
+  
+        data _NULL_;
+            set tmp&i. end=END;
+            by VAR1;
+            if _N_=1 then call symputx("NAME", VAR1);
+            if END then call symputx("NAME4C", VAR1);
+        run;
 
-      %put &NAME;
+        %put &NAME;
+        %put &NAME4C;
 
-      proc datasets library=work noprint;
-          change tmp&i.=&NAME.;
-      run; quit;
+        *When "VAR1" has a sheet name, rename the dataset;
+        %if &NAME=&NAME4C %then %do;
+          proc datasets library=work noprint;
+              change tmp&i.=&NAME.;
+          run; quit;
+          *Only in "SAE_REPORT", remove duplicate observations;
+          %if %upcase(&name)=SAE_REPORT %then %do;
+              proc transpose data=sae_report(obs=0) out=sae_report_2check;
+                  var _all_;
+              run;
+              data sae_report_2check;
+                  set sae_report_2check end=final;
+                  if final then output;
+                  call symputx("_IFTRUE_", _name_);
+              run;
+              %put &_IFTRUE_;
+              data sae_report;
+                  set sae_report;
+                  if upcase(&_IFTRUE_)='TRUE' then output;
+              run;
+          %end;
+        %end;
 
-      *Only in "SAE_REPORT", remove duplicate observations;
-      %if %upcase(&name)=SAE_REPORT %then %do;
-          proc transpose data=sae_report(obs=0) out=sae_report_vl;
-              var _all_;
-          run;
-          data sae_report_vl;
-              set sae_report_vl end=final;
-              if final then output;
-              call symputx("vtc", _name_);
-          run;
-          %put &vtc;
-          data sae_report;
-              set sae_report;
-              if &vtc='TRUE' then output;
-          run;
       %end;
-
     %end;
 
 %mend CHANGE_DS_NAME;
@@ -297,6 +305,7 @@ run;
 
       data sheet_&&SUBJ&i;
           set sheet;
+          by Sheet_category;
           where Sheet_alias_name="&&SUBJ&i";
           if FieldItem_field_type=' ' then delete;
       run;
@@ -419,7 +428,9 @@ proc sort data=option_f; by Sheet_alias_name; run;
 *^^^^^^^^^^^^^^^^^^^^Macro for Data Integration^^^^^^^^^^^^^^^^^^^^;
 
 %macro INTEGRATE (ds);
-    
+
+    %if %sysfunc(exist(&ds.)) %then %do;
+
     *Create macro variables;
     proc sql noprint;
 
@@ -445,7 +456,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
           into : _LABEL_ separated by " "
         from label_&ds.
           where not exists (select * from sheet_&ds. where FieldItem_field_type NE "ctcae");
-        %let _LABEL_=&_LABEL_;
+        %let _LABEL_=%NRSTR(&_LABEL_);
 
         *"_RENAME_" holds "field=variable" for rename statement;
         select catx("=", field, trim(variable))
@@ -549,7 +560,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
           into : _CTCAE_LAB_ separated by " "
         from sheet_&ds.
           where not exists (select * from sheet_&ds. where FieldItem_field_type="ctcae");
-        %let _CTCAE_LAB_=&_CTCAE_LAB_;
+        %let _CTCAE_LAB_=%NRSTR(&_CTCAE_LAB_);
 
         *"_CTCAE_VAR_" holds "variable" to rename CTCAE variables;
         select cats(variable)
@@ -660,75 +671,69 @@ proc sort data=option_f; by Sheet_alias_name; run;
             data chbox_3;
                 set chbox_2;
                 where Sheet_alias_name="&ds_chb.";
-                keep Sheet_alias_name Option_name Option__Value_code Option__Value_code_type Option__Value_name field new_var;
+                keep Sheet_alias_name Option_name Option__Value_code Option__Value_code_type Option__Value_name field new_var variable;
             run;
 
             *Create Macro Variables;
             proc sql noprint;
-  
                 *"_var_" holds "variable" to list variables which have "checkbox" type in one dataset;
                 select cats(variable)
                   into : _var_ separated by " "
                 from chbox
                   where Sheet_alias_name="&ds_chb.";
-
-                *"_ch_new_varlist_" holds "new_var" to create new variables;
-                select cats(new_var)
-                  into : _ch_new_varlist_ separated by " "
-                from chbox_3;
-
                 *"_ch_lab_" holds "new_var='Option__Value_name'" to label new variables;
                 select catx('=', new_var, quote(trim(Option__Value_name), "'"))
                   into : _ch_lab_ separated by " "
                 from chbox_3;
-
             quit;
 
             *Display Macro Variables in Log Window (to check);
             %put &_var_;
-            %put &_ch_new_varlist_;
             %put &_ch_lab_;
 
-            data xxx_&ds.;
-                *Create new variables;
-                length &_ch_new_varlist_. $8;
-                set xxx_&ds.;
-                *Assign labels to new variables;
-                label &_ch_lab_.;
-                array AR(*) &_ch_new_varlist_.;
-                *Set 'FALSE' as default values;
-                do n=1 to dim(AR);
-                  AR(n)='FALSE';
-                end;
-                *If a varible has no values, set up a '999' flag;
-                *(RSN: Need to be a number flag to be consistent with the other values);
-                %do i=1 %to %sysfunc(countw(&_var_));
-                  %let v1=%scan(&_var_, &i);
+            *Determine the number of times according to the number of "Checkbox"-typed variabes in one dataset;
+            %do i=1 %to %sysfunc(countw(&_var_));
+              %let v1=%scan(&_var_, &i);
+              %put &v1;
+
+              *"_ch_new_varlist_" holds "new_var" to create new variables;
+              proc sql noprint;
+                  select cats(new_var)
+                    into : _ch_new_varlist_ separated by " "
+                  from chbox_3
+                    where variable="&v1.";
+              quit;
+
+              %put &_ch_new_varlist_;
+
+              data xxx_&ds.;
+                  length &_ch_new_varlist_. $8;
+                  set xxx_&ds.;
+                  *If the varible has no values, set up a '999' flag;
                   comma_&i=countw(&v1. , ',');
                   if &v1.=' ' then comma_&i=999;
-                %end;
-            run;
-
-            *Adjust to the number of "Checkbox"-typed variables in one dataset;
-            %do i=1 %to %sysfunc(countw(&_var_));
+                  *Create new variables;
+                  array AR(*) &_ch_new_varlist_.;
+                  *Set 'FALSE' as default values;
+                  do n=1 to dim(AR);
+                    AR(n)='FALSE';
+                  end;
+              run;
     
+              *'number_&i' holds 'comma_&i' to get checkbox variable values;
               proc sql noprint;
                   select cats(comma_&i)
                     into : number_&i separated by " "
                   from xxx_&ds.;
               quit;
 
-              %put &v1;
               %put &&number_&i;
 
               *Assign 'TRUE' values to the relevant variables, depending on the flag variable;
               %do j=1 %to %sysfunc(countw(&&number_&i));
                 %let ind_&j=%scan(&&number_&i, &j);
-      
                 %put &&ind_&j;
-
                 %if &&ind_&j NE 999 %then %do;
-
                   %do k=1 %to &&ind_&j;
                     data xxx_&ds.;
                         set xxx_&ds.;
@@ -738,20 +743,22 @@ proc sort data=option_f; by Sheet_alias_name; run;
                         end;
                     run;
                   %end;
-
-                  %end;
                 %end;
               %end;
 
-              *Drop the flag variable;
-              data xxx_&ds.;
-                  format SUBJID &_var_;
-                  set xxx_&ds.; 
-                  drop n;
-                  %do i=1 %to %sysfunc(countw(&_var_));
-                    drop comma_&i;
-                  %end;
-              run;
+            %end;
+
+            *Drop the flag variable;
+            data xxx_&ds.;
+                format SUBJID &_var_;
+                set xxx_&ds.; 
+                *Assign labels to new variables;
+                label &_ch_lab_.;
+                drop n;
+                %do i=1 %to %sysfunc(countw(&_var_));
+                  drop comma_&i;
+                %end;
+            run;
 
         %mend CONVERT_2;
 
@@ -762,8 +769,17 @@ proc sort data=option_f; by Sheet_alias_name; run;
     *Sort by SUBJID (number);
     proc sort data=xxx_&ds. sortseq=linguistic (numeric_collation=on); by SUBJID; run;
 
-    *Export the datasets to the "ADS" directory (only AE, SAE_REPORT and COMMITTEES_OPINION);
-    %if %upcase(&ds.) in (AE SAE_REPORT COMMITTEES_OPINION) %then %do;
+    data _NULL_;
+        set sheet_&ds;
+        by Sheet_category;
+        *"_CATEGORY_" holds "Sheet_category" to assign correct category code;
+        if first.Sheet_category then call symputx("_CATEGORY_", Sheet_category);
+    run;
+
+    %put &_CATEGORY_;
+
+    *Export the datasets to the "ADS" directory (only AE_REPORT, COMMITTEES_OPINION and MULTIPLE);
+    %if %upcase(&_CATEGORY_) in (AE_REPORT COMMITTEES_OPINION MULTIPLE) %then %do;
 
         *Export the datasets as SAS datasets;
         data libads.&ds; set xxx_&ds; run;
@@ -788,8 +804,15 @@ proc sort data=option_f; by Sheet_alias_name; run;
 
     %end;
 
+    *For Ptdata;
+    %if not(%upcase(&_CATEGORY_) in (AE_REPORT COMMITTEES_OPINION MULTIPLE)) %then %do;
+        data yyy_&ds.; set xxx_&ds.; run;
+    %end;
+
     *Sort by SUBJID (character);
-    proc sort data=xxx_&ds.; by SUBJID; run;
+    proc sort data=yyy_&ds.; by SUBJID; run;
+
+    %end;
 
 %mend INTEGRATE;
 
@@ -798,7 +821,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
 %macro EXECUTE;
 
     %do i=1 %to &TOTAL;
-      %INTEGRATE (&&SUBJ&i);
+        %INTEGRATE (&&SUBJ&i);
     %end;
 
 %mend EXECUTE;
@@ -811,8 +834,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
 *Get contents of datasets except for "AE, SAE and COMMITTEES_OPINION";
 data to_combine;
     set sashelp.vtable (where=(libname='WORK'));
-    if memname=:'XXX';
-    if memname in ('XXX_AE' 'XXX_SAE_REPORT' 'XXX_COMMITTEES_OPINION') then delete;
+    if memname=:'YYY';
 run;
 
 *Create a macro variable that holds the names of the datasets;
