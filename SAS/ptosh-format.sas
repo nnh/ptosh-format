@@ -2,7 +2,7 @@
 Program Name : ptosh-format.sas
 Purpose : Automatic Data Conversion of Ptosh-based Data to ADS
 Author : Kato Kiroku
-Date : 2019-02-20
+Date : 2019-02-22
 SAS version : 9.4
 **************************************************************************;
 
@@ -315,9 +315,10 @@ run;
       data label_&&SUBJ&i;
           set sheet_&&SUBJ&i;
           c1=kpropcase(FieldItem_label, 'full-alphabet, half-alphabet');
+          c1_2=tranwrd(c1, '%', 'percent');
           c2=kpropcase(Option_name, 'full-alphabet, half-alphabet');
-          drop FieldItem_label Option_name;
-          rename c1=FieldItem_label c2=Option_name;
+          drop FieldItem_label Option_name c1;
+          rename c1_2=FieldItem_label c2=Option_name;
       run;
 
     %end;
@@ -456,7 +457,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
           into : _LABEL_ separated by " "
         from label_&ds.
           where not exists (select * from sheet_&ds. where FieldItem_field_type NE "ctcae");
-        %let _LABEL_=%NRSTR(&_LABEL_);
+        %let _LABEL_=&_LABEL_;
 
         *"_RENAME_" holds "field=variable" for rename statement;
         select catx("=", field, trim(variable))
@@ -560,7 +561,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
           into : _CTCAE_LAB_ separated by " "
         from sheet_&ds.
           where not exists (select * from sheet_&ds. where FieldItem_field_type="ctcae");
-        %let _CTCAE_LAB_=%NRSTR(&_CTCAE_LAB_);
+        %let _CTCAE_LAB_=&_CTCAE_LAB_;
 
         *"_CTCAE_VAR_" holds "variable" to rename CTCAE variables;
         select cats(variable)
