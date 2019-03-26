@@ -3,7 +3,7 @@
 # Author: mariko ohtsuka
 # Output log ------
 Sys.setenv("TZ" = "Asia/Tokyo")
-parent_path <- "/Users/admin/Desktop/NMC-RocStent"
+parent_path <- "/Users/admin/Desktop/NHOH-ITP-15"
 # log output path
 log_path <- paste0(parent_path, "/log")
 if (file.exists(log_path) == F) {
@@ -182,7 +182,7 @@ kOption_ctcae <- "ctcae"
 kOutput_DF <- "ptdata"
 kMerge_excluded_sheet_category <- c("ae_report", "committees_opinion", "multiple")
 kSheet_csv_fileEncoding <- "cp932"
-kOption_csv_fileEncoding <- "cp932"
+kOption_csv_fileEncoding <- "utf-8"
 kOutput_csv_fileEncoding <- "cp932"
 kOutput_csv_eol <- "\r\n"  # output_csv's line feed code
 kSheet_csv_name <- "sheet.csv"
