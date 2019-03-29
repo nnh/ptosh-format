@@ -56,3 +56,8 @@ Temporary Items
 *.xlsx
 *.xlsm
 *.csv
+packrat/lib*/
+/input/
+/external/
+/variable_list/
+/log/

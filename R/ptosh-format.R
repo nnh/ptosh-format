@@ -1,204 +1,43 @@
 # Format Ptosh data for analysis program
 # Created date: 2018/12/19
-# Author: mariko ohtsuka
+# Author: mariko ohtsuka# library, function section ------
+# install.packages("tidyr")
+# install.packages("here")
+library("tidyr")
+library(here)
 # Output log ------
 Sys.setenv("TZ" = "Asia/Tokyo")
-parent_path <- "/Users/admin/Desktop/NHOH-ITP-15"
+parent_path <- here()
 # log output path
-log_path <- paste0(parent_path, "/log")
+log_path <- here("log", "")
 if (file.exists(log_path) == F) {
   dir.create(log_path)
 }
-sink(paste0(log_path, "/log.txt"))
-
-# library, function section ------
-# install.packages("tidyr")
-library("tidyr")
-#' @title
-#' Exit function
-#' @description
-#' Exit from this program
-#' @return
-#' No return value
-Exit <- function(){
-  .Internal(.invokeRestart(list(NULL, NULL), NULL))
-}
-#' @title
-#' Checking if the column name exists
-#' @description
-#' Returns column index if column "col_name" exists in data frame "df", -1 if it does not exist
-#' @param
-#' col_name : String of column name
-#' df : String of data frame name
-#' @return
-#' the column index : if "col_name" exists
-#' -1 : if "col_name" is not exist
-#' @examples
-#' colnames(df_test) : "field1" "field3" "field5"
-#' CheckColname("field3", "df_test") : return 2
-#' CheckColname("field2", "df_test") : return -1
-CheckColname <- function(col_name, df){
-  res = -1
-  if (col_name %in% colnames(df)) {
-    res <- which(col_name == colnames(df))
-  }
-  return(res)
-}
-#' @title
-#' Output csv and R_dataframe
-#' @param
-#' df : dataframe name
-#' output_csv_path : output "*.csv" path
-#' output_rda_path : output "*.Rda" path
-#' @return
-#' No return value
-OutputDF <- function(df, output_csv_path, output_rda_path){
-  # Output csv and R_dataframe
-  write.csv(get(df), paste0(output_csv_path, "/", df, ".csv"), na='""', row.names=F,
-            fileEncoding=kOutput_csv_fileEncoding, eol=kOutput_csv_eol)
-  save(list=df, file=(paste0(output_rda_path, "/", df, ".Rda")))
-}
-#' @title
-#' Split CTCAE term and grade by '-'
-#' @param
-#' df : input data frame
-#' column_index : Index of CTCAE column (field)
-#' term_colname : column name (term)
-#' grade_colname : column name (grade)
-#' @return
-#' data frame
-#' @example
-#' *input dataframe
-#' field x
-#' ----------
-#' 10002272-3
-#' 10048580-4
-#' ----------
-#' * return dataframe
-#' term_colname|grade_colname
-#' --------------------------
-#' 10002272    |3
-#' 10048580    |4
-#' --------------------------
-SplitCtcae <- function(df, column_index, term_colname, grade_colname){
-  if (kCtcae_convertflag == 1) {
-    temp_ctcae <- df[column_index + 1]
-  } else {
-    temp_ctcae <- df[column_index]
-  }
-  colnames(temp_ctcae) <- kOption_ctcae
-  output_ctcae <- temp_ctcae %>% separate(kOption_ctcae, into = c(term_colname, grade_colname), sep = "-")
-  return(output_ctcae)
-}
-#' --------------------------
-#' @title
-#' Create columns to set the value of the checkboxes
-#' @param
-#' ptosh_input : ptosh_csv
-#' sheet_csv : sheet_csv, a row that value 'field_type' is 'checkbox'
-#' ptosh_column_name : ptosh checkbox type field column name
-#' @return
-#' data frame
-#' @example
-#' * sheet.csv
-#' Sheet.alias_name|FieldItem.name.tr..field......|FieldItem.field_type|Option.name|variable
-#' -----------------------------------------------------------------------------------------
-#' abc             |13                            |checkbox            |"B症状     |efgh
-#'
-#' * option.csv
-#' Option#name|Option::Value#code
-#' ------------------------------
-#' B症状      |1
-#' B症状      |3
-#' B症状      |5
-#'
-#' * ptosh_csv
-#' alias_name|SUBJID|field13
-#' -------------------------
-#' abc       |1     |NA
-#' abc       |2     |3
-#' abc       |3     |1,5
-#'
-#' * return dataframe
-#' SUBJID|efgh_1|efgh_3|efgh_5
-#' ---------------------------
-#' 1     |F     |F     |F
-#' 2     |F     |T     |F
-#' 3     |T     |F     |T
-CreateCheckboxColumns <- function(ptosh_input, sheet_csv, ptosh_column_name){
-  option_csv <- ExtractOptionCsv(sheet_csv$Option.name)
-  # Create dataframe of number of checkboxes column
-  checkbox_df <- data.frame(matrix(rep(F), ncol=nrow(option_csv), nrow=nrow(ptosh_input)))
-  colnames(checkbox_df) <- option_csv$Option..Value.code
-  checkbox_field_name <- paste0("field", sheet_csv$FieldItem.name.tr..field......)
-  for (i in 1:nrow(ptosh_input)) {
-    checkbox_field_value <- ptosh_input[i, ptosh_column_name]
-    if (!is.na(checkbox_field_value)) {
-      # If multiple values, split by ','
-      temp_checkbox_value <- unlist(strsplit(as.character(checkbox_field_value), ","))
-      for (j in 1:length(temp_checkbox_value)) {
-        checkbox_df[i, as.numeric(temp_checkbox_value[j])] <- T
-      }
-    }
-  }
-  colnames(checkbox_df) <- paste0(column_name, "_", option_csv$Option..Value.code)
-  return(checkbox_df)
-}
-#' @title
-#' Extract records from option.csv
-#' @param
-#' target_name : The value of Option.name
-#' @return
-#' data frame
-ExtractOptionCsv <- function(target_name){
-  df <- subset(option_csv, option_csv$Option.name == target_name)
-  return(df)
-}
-#' @title
-#' check unique value
-#' @param
-#' input_df : dataframe for the check
-#' duplicated_df : dataframe for the result output
-#' column_name : column name for the check
-#' @return
-#' data frame
-CheckDuplicated <- function(input_df, duplicated_df, column_name){
-  temp_df <- input_df[duplicated(input_df[ ,column_name]) | duplicated(input_df[ ,column_name],fromLast=T), ]
-  if (nrow(temp_df) != 0) {
-    temp_df <- cbind(rownames(temp_df), temp_df)
-    output_df <- rbind(duplicated_df, temp_df)
-  } else {
-    output_df <- duplicated_df
-  }
-  return(output_df)
-}
-
+sink(here("log", "log.txt"))
+source(here("R", "common_function.R"))
 # Constant section ------
-kPtoshRegistrationNumberColumnIndex <- 9  # ptosh_csv$registration_number
+ConstAssign("kPtoshRegistrationNumberColumnIndex", 9)  # ptosh_csv$registration_number
 # If the MedDRA code is set in the field, set 0, else set 1
-kCtcae_convertflag <- 0
-kRegistration_colname <- "SUBJID"
-kOption_ctcae <- "ctcae"
-kOutput_DF <- "ptdata"
-kMerge_excluded_sheet_category <- c("ae_report", "committees_opinion", "multiple")
-kSheet_csv_fileEncoding <- "cp932"
-kOption_csv_fileEncoding <- "utf-8"
-kOutput_csv_fileEncoding <- "cp932"
-kOutput_csv_eol <- "\r\n"  # output_csv's line feed code
-kSheet_csv_name <- "sheet.csv"
-kOption_csv_name <- "option.csv"
-
+ConstAssign("kCtcae_convertflag", 0)
+ConstAssign("kRegistration_colname", "SUBJID")
+ConstAssign("kOption_ctcae", "ctcae")
+ConstAssign("kOutput_DF", "ptdata")
+ConstAssign("kMerge_excluded_sheet_category", c("ae_report", "committees_opinion", "multiple"))
+ConstAssign("kOutput_csv_fileEncoding", "cp932")
+ConstAssign("kOutput_csv_eol", "\r\n")  # output_csv's line feed code
+ConstAssign("kSheet_csv_name", "sheet.csv")
+ConstAssign("kOption_csv_name", "option.csv")
 # Initialize ------
 if (exists(kOutput_DF)) {
   rm(list=kOutput_DF)
 }
 # Setting of input/output path
-input_path <- paste0(parent_path, "/input")
-external_path <<- paste0(parent_path, "/external")
+input_path <- here("input", "")
+external_path <<- here("external", "")
 # If the output folder does not exist, create it
-output_variable_path <- paste0(parent_path, "/variable_list")
-output_path <- paste0(parent_path, "/output")
-output_dst_path <- paste0(output_path, "/dst")
+output_variable_path <- here("variable_list", "")
+output_path <- here("output", "")
+output_dst_path <- here("output", "dst", "")
 if (file.exists(output_variable_path) == F) {
   dir.create(output_variable_path)
 }
@@ -209,17 +48,21 @@ if (file.exists(output_dst_path) == F) {
   dir.create(output_dst_path)
 }
 # Input option.csv
-option_csv <- read.csv(paste0(external_path, "/", kOption_csv_name), as.is=T, fileEncoding=kOption_csv_fileEncoding,
-                       stringsAsFactors=F)
+option_csv <- tryCatch(read.csv(paste0(external_path, kOption_csv_name), as.is=T, fileEncoding="utf-8",
+                       stringsAsFactors=F, na.strings=""),
+                       warning = function(x){return(read.csv(paste0(external_path, kOption_csv_name), as.is=T,
+                                                             fileEncoding="cp932", stringsAsFactors=F, na.strings=""))})
 # Input sheet.csv, delete rows that 'variable' is NA
-sheet_csv <- read.csv(paste0(external_path, "/", kSheet_csv_name), as.is=T, na.strings="",
-                      fileEncoding=kSheet_csv_fileEncoding, stringsAsFactors=F)
+sheet_csv <-  tryCatch(read.csv(paste0(external_path, kSheet_csv_name), as.is=T, fileEncoding="utf-8",
+                                stringsAsFactors=F, na.strings=""),
+                       warning = function(x){return(read.csv(paste0(external_path, kSheet_csv_name), as.is=T,
+                                                             fileEncoding="cp932", stringsAsFactors=F, na.strings=""))})
 sheet_csv <- subset(sheet_csv, !is.na(sheet_csv$variable) & !is.na(sheet_csv$FieldItem.label))
 unique_sheet_csv <- sheet_csv[!duplicated(sheet_csv["Sheet.alias_name"]), ]
 alias_name <- unique_sheet_csv$Sheet.alias_name
 sheet_category <- unique_sheet_csv$Sheet.category
 merge_excluded_alias_name <- unique_sheet_csv[which(unique_sheet_csv$Sheet.category
-                                                         %in% kMerge_excluded_sheet_category),"Sheet.alias_name"]
+                                                         %in% kMerge_excluded_sheet_category), "Sheet.alias_name"]
 merge_alias_name <- alias_name[-which(alias_name %in% merge_excluded_alias_name)]
 # Create an empty data frame
 df_duplicated <- data.frame(matrix(rep(NA, ncol(sheet_csv) + 1), nrow=1))[numeric(0), ]
@@ -247,7 +90,7 @@ for (i in 1:length(alias_name)) {
     ptosh_input <- paste0("rawdata_", alias_name[i])
     ptosh_output <- alias_name[i]
     # ex. rawdata_ae <- read.csv(R-miniCHP_ae_181211_1841.csv)
-    assign(ptosh_input, read.csv(paste(input_path, file_list[file_index], sep="/"), as.is=T, na.strings="",
+    assign(ptosh_input, read.csv(paste0(input_path, file_list[file_index]), as.is=T, na.strings="",
                                    fileEncoding="cp932"))
     # Select sheet_csv's rows if sheet_csv$Sheet.alias_name and ptosh_csv$alias_name is same value
     df_itemlist <- subset(sheet_csv, sheet_csv[ ,"Sheet.alias_name"] == alias_name[i])
