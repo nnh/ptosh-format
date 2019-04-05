@@ -1,6 +1,7 @@
 # Format Ptosh data for analysis program
 # Created date: 2018/12/19
-# Author: mariko ohtsuka# library, function section ------
+# Author: mariko ohtsuka
+# library, function section ------
 # install.packages("tidyr")
 # install.packages("here")
 library("tidyr")
@@ -9,12 +10,32 @@ library(here)
 Sys.setenv("TZ" = "Asia/Tokyo")
 parent_path <- here()
 # log output path
-log_path <- here("log", "")
-if (file.exists(log_path) == F) {
-  dir.create(log_path)
-}
-sink(here("log", "log.txt"))
+#log_path <- here("log", "")
+#if (file.exists(log_path) == F) {
+#  dir.create(log_path)
+#}
+#sink(here("log", "log.txt"))
+# Function section ------
 source(here("R", "common_function.R"))
+#' @title
+#' SetAllocation
+#' @description
+#' Set allocation by subjid
+#' @param
+#' allocation_csv : Allocation source data frame
+#' input_df : Data frame to be allocated
+#' @return
+#' data frame
+#' @examples
+#' SetAllocation(allocation_csv, ptdata)
+SetAllocation <- function(allocation_csv, input_df){
+  allocation_key <- colnames(allocation_csv)[kAllocationSubjidColumnIndex]
+  # Sort input_df by subjid
+  sort_input_df <- input_df[order(input_df[kRegistration_colname]), ]
+  # Merge by subjid
+  output_df <- merge(sort_input_df, allocation_csv, by.x=kRegistration_colname, by.y=allocation_key, all=T)
+  return(output_df)
+}
 # Constant section ------
 ConstAssign("kPtoshRegistrationNumberColumnIndex", 9)  # ptosh_csv$registration_number
 # If the MedDRA code is set in the field, set 0, else set 1
@@ -27,6 +48,8 @@ ConstAssign("kOutput_csv_fileEncoding", "cp932")
 ConstAssign("kOutput_csv_eol", "\r\n")  # output_csv's line feed code
 ConstAssign("kSheet_csv_name", "sheet.csv")
 ConstAssign("kOption_csv_name", "option.csv")
+ConstAssign("kAllocationSubjidColumnIndex", 1)
+ConstAssign("kAllocationAllocationColumnIndex", 2)
 # Initialize ------
 if (exists(kOutput_DF)) {
   rm(list=kOutput_DF)
@@ -88,6 +111,32 @@ if (nrow(df_duplicated) != 0) {
 # Input ptosh_csv ------
 # Set ptosh_csv's name list
 file_list <- list.files(input_path)
+# Get trial name
+# Replace ex.) "xxx_ae_20190301_1122.csv" -> "xxx_ae"
+temp_file_list <- gsub("_[0-9]{6}_[0-9]{4}.csv", "", file_list)
+# Replace ex.) "xxx_ae" -> "xxx"
+gsub_alias_name <- paste0("_", alias_name)
+gsub_alias_name <- paste(gsub_alias_name, collapse="|")
+temp_file_list <- gsub(gsub_alias_name, "", temp_file_list)
+# Count trial name
+df_trial_name <- as.data.frame(as.matrix(table(temp_file_list)))
+temp_trial_name <- subset(df_trial_name, df_trial_name[ ,1] == max(df_trial_name[1]))
+trial_name <- row.names(temp_trial_name)
+# If there are multiple matches, try all
+# read allocation
+for (i in 1:length(trial_name)) {
+  file_index <- grep(paste0(trial_name[i], "_[0-9]{6}_[0-9]{4}.csv"), file_list)
+  if (length(file_index) > 0) {
+    allocation_csv <- read.csv(paste0(input_path, file_list[file_index]), as.is=T, na.strings="", fileEncoding="cp932")
+    if (colnames(allocation_csv)[kAllocationAllocationColumnIndex] == "自動割付") {
+      # sort subjid
+      allocation_csv <- allocation_csv[order(allocation_csv[kAllocationSubjidColumnIndex]), ]
+      break()
+    } else {
+      rm(allocation_csv)
+    }
+  }
+}
 for (i in 1:length(alias_name)) {
   file_index <- grep(paste0("_", alias_name[i] , "_"), file_list)
   # If the csv file does not exist, skip and output warning
@@ -165,7 +214,7 @@ for (i in 1:length(alias_name)) {
     }
     # Edit output dataframe
     if (sheet_category[i] %in% kMerge_excluded_sheet_category) {
-            OutputDF(ptosh_output, output_path, output_dst_path)
+      OutputDF(ptosh_output, output_path, output_dst_path)
     } else {
       # Merge
       if (!exists(kOutput_DF)) {
@@ -182,6 +231,7 @@ for (i in 1:length(alias_name)) {
 }
 # Output merge dataframe
 if (exists(kOutput_DF)) {
+  assign(kOutput_DF, SetAllocation(allocation_csv, get(kOutput_DF)))
   OutputDF(kOutput_DF, output_path, output_dst_path)
 } else {
   warning("No output ptdata")
@@ -193,4 +243,4 @@ OutputDF("output_option_csv", output_used_option_path, output_used_option_path)
 output_sheet_csv <- sheet_csv[ ,c("Sheet.alias_name", "FieldItem.label", "variable")]
 OutputDF("output_sheet_csv", output_variable_path, output_variable_path)
 # Reset the log output destination
-sink()
+# sink()
