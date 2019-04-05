@@ -35,9 +35,13 @@ if (exists(kOutput_DF)) {
 input_path <- here("input", "")
 external_path <<- here("external", "")
 # If the output folder does not exist, create it
+output_used_option_path <- here("used_option_csv")
 output_variable_path <- here("variable_list", "")
 output_path <- here("output", "")
 output_dst_path <- here("output", "dst", "")
+if (file.exists(output_used_option_path) == F) {
+  dir.create(output_used_option_path)
+}
 if (file.exists(output_variable_path) == F) {
   dir.create(output_variable_path)
 }
@@ -52,6 +56,7 @@ option_csv <- tryCatch(read.csv(paste0(external_path, kOption_csv_name), as.is=T
                        stringsAsFactors=F, na.strings=""),
                        warning = function(x){return(read.csv(paste0(external_path, kOption_csv_name), as.is=T,
                                                              fileEncoding="cp932", stringsAsFactors=F, na.strings=""))})
+option_used <- NULL
 # Input sheet.csv, delete rows that 'variable' is NA
 sheet_csv <-  tryCatch(read.csv(paste0(external_path, kSheet_csv_name), as.is=T, fileEncoding="utf-8",
                                 stringsAsFactors=F, na.strings=""),
@@ -149,9 +154,10 @@ for (i in 1:length(alias_name)) {
               temp_factor_colname <- column_name
             }
             factor_data <- temp_ptosh_output[ , temp_factor_colname]
-            temp_ptosh_output[ , temp_factor_colname] <-   factor(temp_ptosh_output[ , temp_factor_colname],
+            temp_ptosh_output[ , temp_factor_colname] <- factor(temp_ptosh_output[ , temp_factor_colname],
                                                    levels = as.matrix(temp_factor["Option..Value.code"]),
                                                    labels = as.matrix(temp_factor["Option..Value.name"]))
+            option_used <- c(option_used, temp_factor["Option.name"], recursive=T)
           }
         }
       }
@@ -180,6 +186,9 @@ if (exists(kOutput_DF)) {
 } else {
   warning("No output ptdata")
 }
+# Output used option list
+output_option_csv <- subset(option_csv, Option.name %in% unique(option_used))
+OutputDF("output_option_csv", output_used_option_path, output_used_option_path)
 # Output variable name list
 output_sheet_csv <- sheet_csv[ ,c("Sheet.alias_name", "FieldItem.label", "variable")]
 OutputDF("output_sheet_csv", output_variable_path, output_variable_path)

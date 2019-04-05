@@ -171,7 +171,35 @@ CheckDuplicated <- function(input_df, duplicated_df, column_name){
 #' Variable to define
 #' @examples
 #' ConstAssign("FOO", 1)
-ConstAssign <- function(x, value, e=.GlobalEnv) {
-  assign(x, value, envir=e)
-  lockBinding(x, e)
+ConstAssign <- function(x, value, e=.GlobalEnv){
+  if (!exists(x)) {
+    assign(x, value, envir=e)
+    lockBinding(x, e)
+  }
+}
+#' @title
+#' CreateDataFrame
+#' @description
+#' Create a data frame
+#' @param
+#' col_names : Data frame column name
+#' row_count : Number of rows of data frame, Default 0
+#' @return
+#' data frame
+#' @examples
+#' CreateDataFrame(c("a", "b", "c"), 4)
+#' CreateDataFrame(c("aaa", "bbb", "ccc"))
+CreateDataFrame <- function(col_names, row_count=0){
+  col_count <- length(col_names)
+  if (row_count == 0) {
+    temp_row_count <- 1
+  } else {
+    temp_row_count <- row_count
+  }
+  df <- data.frame(matrix(rep(NA, col_count * temp_row_count), ncol=col_count, nrow=temp_row_count))
+  colnames(df) <- col_names
+  if (row_count == 0) {
+    df <- df[numeric(0), ]
+  }
+  return(df)
 }
