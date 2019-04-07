@@ -33,7 +33,7 @@ SetAllocation <- function(allocation_csv, input_df){
   # Sort input_df by subjid
   sort_input_df <- input_df[order(input_df[kRegistration_colname]), ]
   # Merge by subjid
-  output_df <- merge(sort_input_df, allocation_csv, by.x=kRegistration_colname, by.y=allocation_key, all=T)
+  output_df <- merge(sort_input_df, allocation_csv, by.x=kRegistration_colname, by.y=allocation_key, all.x=T)
   return(output_df)
 }
 # Constant section ------
@@ -214,6 +214,7 @@ for (i in 1:length(alias_name)) {
     }
     # Edit output dataframe
     if (sheet_category[i] %in% kMerge_excluded_sheet_category) {
+      assign(ptosh_output, SetAllocation(allocation_csv, get(ptosh_output)))
       OutputDF(ptosh_output, output_path, output_dst_path)
     } else {
       # Merge
