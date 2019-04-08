@@ -4,19 +4,19 @@
 # library, function section ------
 # install.packages("tidyr")
 # install.packages("here")
-library("tidyr")
+library(tidyr)
 library(here)
 # Output log ------
 Sys.setenv("TZ" = "Asia/Tokyo")
 parent_path <- here()
 # log output path
-#log_path <- here("log", "")
-#if (file.exists(log_path) == F) {
-#  dir.create(log_path)
-#}
-#sink(here("log", "log.txt"))
+log_path <- here("R", "log", "")
+if (file.exists(log_path) == F) {
+  dir.create(log_path)
+}
+sink(here("R", "log", "log.txt"))
 # Function section ------
-source(here("R", "common_function.R"))
+source(here("R", "programs", "common_function.R"))
 #' @title
 #' SetAllocation
 #' @description
@@ -55,13 +55,13 @@ if (exists(kOutput_DF)) {
   rm(list=kOutput_DF)
 }
 # Setting of input/output path
-input_path <- here("input", "")
-external_path <<- here("external", "")
+input_path <- here("R", "input", "")
+external_path <<- here("R", "external", "")
 # If the output folder does not exist, create it
-output_used_option_path <- here("used_option_csv")
-output_variable_path <- here("variable_list", "")
-output_path <- here("output", "")
-output_dst_path <- here("output", "dst", "")
+output_used_option_path <- here("R", "used_option_csv", "")
+output_variable_path <- here("R", "variable_list", "")
+output_path <- here("R", "output", "")
+output_dst_path <- here("R", "output", "dst", "")
 if (file.exists(output_used_option_path) == F) {
   dir.create(output_used_option_path)
 }
@@ -214,7 +214,9 @@ for (i in 1:length(alias_name)) {
     }
     # Edit output dataframe
     if (sheet_category[i] %in% kMerge_excluded_sheet_category) {
-      assign(ptosh_output, SetAllocation(allocation_csv, get(ptosh_output)))
+      if (exists("allocation_csv")) {
+        assign(ptosh_output, SetAllocation(allocation_csv, get(ptosh_output)))
+      }
       OutputDF(ptosh_output, output_path, output_dst_path)
     } else {
       # Merge
@@ -232,7 +234,9 @@ for (i in 1:length(alias_name)) {
 }
 # Output merge dataframe
 if (exists(kOutput_DF)) {
-  assign(kOutput_DF, SetAllocation(allocation_csv, get(kOutput_DF)))
+  if (exists("allocation_csv")) {
+    assign(kOutput_DF, SetAllocation(allocation_csv, get(kOutput_DF)))
+  }
   OutputDF(kOutput_DF, output_path, output_dst_path)
 } else {
   warning("No output ptdata")
@@ -244,4 +248,4 @@ OutputDF("output_option_csv", output_used_option_path, output_used_option_path)
 output_sheet_csv <- sheet_csv[ ,c("Sheet.alias_name", "FieldItem.label", "variable")]
 OutputDF("output_sheet_csv", output_variable_path, output_variable_path)
 # Reset the log output destination
-# sink()
+sink()

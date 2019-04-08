@@ -1,0 +1,42 @@
+---
+title: "common"  
+author: "ohtsuka"  
+date: "`r Sys.Date()`"  
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## 実行ファイルのダウンロード
+[ptosh-format](https://github.com/nnh/ptosh-format)のページをGoogleChromeなどのブラウザで開きます。  
+
+## 実行ファイルのダウンロード
+aiueo
+```{r url, include=FALSE}
+temp_path <- paste0(pic_path, "/url.png")
+```
+![ptosh-format](`r temp_path`)  
+
+## 実行ファイルのダウンロード
+![GitHubへのログインが必要な場合があります。「Sign in」からログインしてください。](`r paste0(pic_path, "/github_login_404.png")`)  
+
+## 実行ファイルのダウンロード
+![「Sign in」からログインしてください。](`r paste0(pic_path, "/github_login.png")`)  
+
+## 実行ファイルのダウンロード
+「Clone or download」をクリックし、開いたポップアップの「Download ZIP」をクリックします。
+![「Clone or download」をクリックし、開いたポップアップの「Download ZIP」をクリックします。](`r paste0(pic_path, "/download_zip.png")`)
+
+## Slide with R Output
+
+```{r cars, echo = TRUE}
+summary(cars)
+```
+
+## Slide with Plot
+
+```{r pressure}
+plot(pressure)
+```
+
