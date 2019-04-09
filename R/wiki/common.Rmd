@@ -5,38 +5,59 @@ date: "`r Sys.Date()`"
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo=F, comment=NA)
 ```
 
 ## 実行ファイルのダウンロード
 [ptosh-format](https://github.com/nnh/ptosh-format)のページをGoogleChromeなどのブラウザで開きます。  
 
-## 実行ファイルのダウンロード
-aiueo
 ```{r url, include=FALSE}
 temp_path <- paste0(pic_path, "/url.png")
 ```
 ![ptosh-format](`r temp_path`)  
 
-## 実行ファイルのダウンロード
-![GitHubへのログインが必要な場合があります。「Sign in」からログインしてください。](`r paste0(pic_path, "/github_login_404.png")`)  
+```{r login404, include=T}
+temp_path <- paste0(pic_path, "/github_login_404.png")
+temp_message <- "GitHubへのログインが必要な場合があります。「Sign in」からログインしてください。"
+if (message_f == T) {
+  print(temp_message)
+}
+```
+![`r temp_message`](`r temp_path`)  
 
-## 実行ファイルのダウンロード
-![「Sign in」からログインしてください。](`r paste0(pic_path, "/github_login.png")`)  
+```{r login, include=T}
+temp_path <- paste0(pic_path, "/github_login.png")
+temp_message <- "ID、パスワードを入れてログインしてください。"
+if (message_f == T) {
+  print(temp_message)
+}
+```
+![`r temp_message`](`r temp_path`)  
 
-## 実行ファイルのダウンロード
-「Clone or download」をクリックし、開いたポップアップの「Download ZIP」をクリックします。
-![「Clone or download」をクリックし、開いたポップアップの「Download ZIP」をクリックします。](`r paste0(pic_path, "/download_zip.png")`)
+```{r download_zip, include=T}
+temp_path <- paste0(pic_path, "/download_zip.png")
+temp_message <- "「Clone or download」をクリックし、開いたポップアップの「Download ZIP」をクリックします。"
+if (message_f == T) {
+  print(temp_message)
+}
+```
+![`r temp_message`](`r temp_path`)  
 
-## Slide with R Output
-
-```{r cars, echo = TRUE}
-summary(cars)
+```{r zip_decryption, include=T}
+temp_path <- paste0(pic_path, "/zip_decryption.png")
+temp_message <- "ダウンロードフォルダ（設定によって異なる場合があります）に「ptosh-format-master.zip」が保存されます。"
+if (message_f == T) {
+  print(temp_message)
+}
 ```
 
-## Slide with Plot
+![`r temp_message`](`r temp_path`)
 
-```{r pressure}
-plot(pressure)
+```{r zip_copy, include=T}
+temp_path <- paste0(pic_path, "/zip_copy.png")
+temp_message <- "ダブルクリック（設定によって異なる場合があります）すると「ptosh-format-master」というフォルダが開きます。フォルダをコピーし、デスクトップ等任意の場所に貼り付けてください。"
+if (message_f == T) {
+  print(temp_message)
+}
 ```
-
+![`r temp_message`](`r temp_path`)  
