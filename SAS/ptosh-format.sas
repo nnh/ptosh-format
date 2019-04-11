@@ -2,7 +2,7 @@
 Program Name : ptosh-format.sas
 Purpose : Automatic Data Conversion of Ptosh-based Data to ADS
 Author : Kato Kiroku
-Date : 2019-02-22
+Date : 2019-04-11
 SAS version : 9.4
 **************************************************************************;
 
@@ -21,7 +21,7 @@ proc datasets library=work kill nolist; quit;
 options mprint mlogic symbolgen minoperator;
 
 
-*^^^^^^^^^^^^^^^^^^^^Current Working Directories^^^^^^^^^^^^^^^^^^^^;
+*------------------------------Current Working Directories------------------------------;
 
 *Find the current working directory;
 %macro FIND_WD;
@@ -57,33 +57,31 @@ libname library "&cwd.\ptosh-format\ads";
 %let tmp=&cwd.\ptosh-format\tmp;
 
 
-*^^^^^^^^^^^^^^^^^^^^Sheet.csv and Option.csv^^^^^^^^^^^^^^^^^^^^;
+*------------------------------Sheet.csv and Option.csv------------------------------;
 
 *Import Sheet.csv and Options.csv from the "EXT" Directory;
 proc import datafile="&ext.\sheet.csv"
     out=sheet
     dbms=csv replace;
-    guessingrows=999;
+    guessingrows=9999;
 run;
-
 proc import datafile="&ext.\option.csv"
     out=option
     dbms=csv replace;
-    guessingrows=999;
+    guessingrows=9999;
 run;
 
-*Adjust the "Option_name" variable in both datasets to the same length;
+*Adjust the "Option_name" variable in both datasets to be the same length;
 data sheet;
     length op $100 c $100 field $12;
     set sheet;
     *Delete unnecessary variables (where "variable" is unnamed);
     if variable=' ' then delete;
     *Delete blanks;
-    c=compress(variable); drop variable; rename c=variable;
     field=cats('field', FieldItem_name_tr__field______);
+    c=compress(variable); drop variable; rename c=variable;
     op=Option_name; drop Option_name; rename op=Option_name;
 run;
-
 data option;
     length op $100;
     set option;
@@ -91,7 +89,7 @@ data option;
 run;
 
 
-*^^^^^^^^^^^^^^^^^^^^"Variable" in the Sheet Dataset^^^^^^^^^^^^^^^^^^^^;
+*------------------------------"Variable" in the Sheet Dataset------------------------------;
 
 *Find out if there are duplicate variables;
 %macro CHECK4ERRORS;
@@ -99,7 +97,6 @@ run;
     %let cancel=;
 
     proc sort data=sheet; by Sheet_alias_name; run;
-
     proc freq data=sheet noprint;
         tables variable / out=sheet_vcount;
         by Sheet_alias_name;
@@ -120,24 +117,19 @@ run;
 
     *Only when duplicate variables are found;
     %if &_WARNING_ NE %then %do;
-
       data variable_duplicated;
           set sheet;
           where variable in (&_WARNING_.);
       run;
-
       *Export a dataset about the duplicate variables;
       proc export data=variable_duplicated
           outfile="&ads.\variable_duplicated.csv"
           dbms=csv replace;
       run;
-
       *Print warning to log;
       %put WARNING: 変数名 &_WARNING_. は重複しています。変数名を変更してください。;
-
       *Stop the current step and any further procedures;
       %abort cancel;
-
     %end;
 
 %mend CHECK4ERRORS;
@@ -145,7 +137,7 @@ run;
 %CHECK4ERRORS;
 
 
-*^^^^^^^^^^^^^^^^^^^^Raw Data^^^^^^^^^^^^^^^^^^^^;
+*------------------------------Raw Data------------------------------;
 
 *Import all raw data within the "RAW" directory;
 %macro READ_CSV (dir, ext);
@@ -175,7 +167,6 @@ run;
                 infile "&dir.\%qsysfunc(dread(&did, &i))" end=eof;
                 input;
             run;
-
             %put &nobs;
 
             %If &nobs>=1 %then %do;
@@ -200,12 +191,25 @@ run;
                     put a $char1.;
                   EXIT:
               run;
-  
+
               proc import datafile="&tmp.\tmp&cnt..csv"
                   out=tmp&cnt
                   dbms=csv replace;
                   guessingrows=999;
               run;
+
+              *If there is an allocation data in the "RAW" directory, rename it to "group";
+              %let csvfile_&cnt=%qsysfunc(dread(&did, &i));
+              data filename_&cnt;
+                  length title $4;
+                  title=substr(compress(scan("&&csvfile_&cnt", 2, '_')), 1, 1); output;
+                  call symputx("csvname_&cnt", title, "G");
+              run;
+              %if &&csvname_&cnt in (0 1 2 3 4 5 6 7 8 9) %then %do;
+                proc datasets library=work noprint;
+                    change tmp&cnt=group;
+                run; quit;
+              %end;
 
             %end;
 
@@ -220,10 +224,8 @@ run;
 
 %mend READ_CSV;
 
-%READ_CSV (&raw., csv);
+%READ_CSV (&raw, csv);
 
-
-*^^^^^^^^^^^^^^^^^^^^Names of Raw Data^^^^^^^^^^^^^^^^^^^^;
 
 *Change the names of datasets;
 %macro CHANGE_DS_NAME;
@@ -234,21 +236,18 @@ run;
         data tmp&i.;
             length c $50;
             set tmp&i.;
-            *Convert '-' to '_' because it is impossible to use the '-' symbol as a variable name;
+            *Convert '-' to '_' since it is impossible to use the '-' symbol as a variable name;
             c=translate(VAR1, '_', '-');
             drop VAR1;
             rename c=VAR1;
         run;
-
         proc sort data=tmp&i.; by VAR1; run;
-  
         data _NULL_;
             set tmp&i. end=END;
             by VAR1;
             if _N_=1 then call symputx("NAME", VAR1);
             if END then call symputx("NAME4C", VAR1);
         run;
-
         %put &NAME;
         %put &NAME4C;
 
@@ -259,11 +258,11 @@ run;
           run; quit;
           *Only in "SAE_REPORT", remove duplicate observations;
           %if %upcase(&name)=SAE_REPORT %then %do;
-              proc transpose data=sae_report(obs=0) out=sae_report_2check;
+              proc transpose data=sae_report(obs=0) out=sae_report4check;
                   var _all_;
               run;
-              data sae_report_2check;
-                  set sae_report_2check end=final;
+              data sae_report4check;
+                  set sae_report4check end=final;
                   if final then output;
                   call symputx("_IFTRUE_", _name_);
               run;
@@ -278,12 +277,22 @@ run;
       %end;
     %end;
 
+    *Arrange the "group" dataset;
+    %if %sysfunc(exist(group)) %then %do;
+      data group;
+          set group;
+          label VAR2='Group';
+          rename VAR1=SUBJID VAR2=group;
+      run;
+      proc sort data=group sortseq=linguistic (numeric_collation=on); by SUBJID; run;
+    %end;
+
 %mend CHANGE_DS_NAME;
 
 %CHANGE_DS_NAME;
 
 
-*^^^^^^^^^^^^^^^^^^^^Sheet Dataset^^^^^^^^^^^^^^^^^^^^;
+*------------------------------Sheet Dataset------------------------------;
 
 proc sort data=sheet; by Sheet_alias_name; run;
 
@@ -302,14 +311,12 @@ run;
 
     %global subj total;
     %do i=1 %to &TOTAL;
-
       data sheet_&&SUBJ&i;
           set sheet;
           by Sheet_category;
           where Sheet_alias_name="&&SUBJ&i";
           if FieldItem_field_type=' ' then delete;
       run;
-
       *Create "label_" datasets which do NOT have full-width characters;
       *RSN : Unable to assign variable labels with full-width symbols like "（";
       data label_&&SUBJ&i;
@@ -320,7 +327,6 @@ run;
           drop FieldItem_label Option_name c1;
           rename c1_2=FieldItem_label c2=Option_name;
       run;
-
     %end;
 
 %mend SPLIT;
@@ -328,7 +334,7 @@ run;
 %SPLIT;
 
 
-*^^^^^^^^^^^^^^^^^^^^Format^^^^^^^^^^^^^^^^^^^^;
+*------------------------------Format------------------------------;
 
 proc sort data=option; by option_name; run;
 
@@ -345,24 +351,20 @@ data option_2;
     keep FMTNAME Option_name Option__Value_name Option__Value_code Option__Value_code_type;
     rename Option__Value_code=START Option__Value_name=LABEL;
 run;
-
 proc format cntlin=option_2 library=library; run;
 
-*Create new dataset from the "Option" dataset for further format statements;
+*Create new dataset from the "Option" and "Sheet" dataset for further format statements;
 data option_3;
     set option_2;
     by Option_name;
     if first.Option_name then output;
     keep FMTNAME Option_name;
 run;
-
-*Create new dataset from the "Sheet" dataset for further format statements;
 data option_from_sheet;
     set sheet;
     if FieldItem_field_type='ctcae' then Option_name='CTCAE';
     if Option_name=' ' then delete;
 run;
-
 proc sort data=option_3; by option_name; run;
 proc sort data=option_from_sheet; by option_name; run;
 
@@ -373,11 +375,10 @@ data option_f;
     if FieldItem_field_type='check' then delete;
     keep Sheet_alias_name field FMTNAME FieldItem_field_type variable;
 run;
-
 proc sort data=option_f; by Sheet_alias_name; run;
 
 
-*^^^^^^^^^^^^^^^^^^^^"Checkbox"-typed Variable^^^^^^^^^^^^^^^^^^^^;
+*------------------------------"Checkbox"-typed Variable------------------------------;
 
 *Find datasets which have a "Checkbox"-typed variable;
 %macro FIND_CHECKBOX;
@@ -397,7 +398,6 @@ proc sort data=option_f; by Sheet_alias_name; run;
           where not exists (select * from sheet where FieldItem_field_type="checkbox");
         %let _DSLIST4CHB_=&_DSLIST4CHB_;
     quit;
-
     %put &_DSLIST4CHB_;
 
     *Only when "Checkbox"-typed variables are found;
@@ -426,11 +426,11 @@ proc sort data=option_f; by Sheet_alias_name; run;
 %put &_DSLIST4CHB_;
 
 
-*^^^^^^^^^^^^^^^^^^^^Macro for Data Integration^^^^^^^^^^^^^^^^^^^^;
+*------------------------------Macro to Aggregate Datasets------------------------------;
 
-%macro INTEGRATE (ds);
+%macro AGGREGATE (ds);
 
-    %if %sysfunc(exist(&ds.)) %then %do;
+    %if %sysfunc(exist(&ds)) %then %do;
 
     *Create macro variables;
     proc sql noprint;
@@ -640,7 +640,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
             _c2_&i=scan(&v3, -1, '-'); _c2_n_&i=input(_c2_&i, best12.);
             drop &v3 _c1_&i _c2_&i;
             %let v4=%scan(&varlist4, &i, ' ');
-            label _c1_n_&i=&v4 _c2_n_&i=&v4;
+            label _c1_n_&i=&v4 _c2_n_&i='Grade';
             %let v5=%scan(&varlist5, &i);
             rename _c1_n_&i=&v5._trm _c2_n_&i=&v5._grd;
           %end;
@@ -687,8 +687,6 @@ proc sort data=option_f; by Sheet_alias_name; run;
                   into : _ch_lab_ separated by " "
                 from chbox_3;
             quit;
-
-            *Display Macro Variables in Log Window (to check);
             %put &_var_;
             %put &_ch_lab_;
 
@@ -704,7 +702,6 @@ proc sort data=option_f; by Sheet_alias_name; run;
                   from chbox_3
                     where variable="&v1.";
               quit;
-
               %put &_ch_new_varlist_;
 
               data xxx_&ds.;
@@ -727,7 +724,6 @@ proc sort data=option_f; by Sheet_alias_name; run;
                     into : number_&i separated by " "
                   from xxx_&ds.;
               quit;
-
               %put &&number_&i;
 
               *Assign 'TRUE' values to the relevant variables, depending on the flag variable;
@@ -745,6 +741,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
                     run;
                   %end;
                 %end;
+
               %end;
 
             %end;
@@ -763,12 +760,12 @@ proc sort data=option_f; by Sheet_alias_name; run;
 
         %mend CONVERT_2;
 
-        %CONVERT_2 (&ds.);
+        %CONVERT_2 (&ds);
 
     %end;
 
     *Sort by SUBJID (number);
-    proc sort data=xxx_&ds. sortseq=linguistic (numeric_collation=on); by SUBJID; run;
+    proc sort data=xxx_&ds sortseq=linguistic (numeric_collation=on); by SUBJID; run;
 
     data _NULL_;
         set sheet_&ds;
@@ -776,19 +773,19 @@ proc sort data=option_f; by Sheet_alias_name; run;
         *"_CATEGORY_" holds "Sheet_category" to assign correct category code;
         if first.Sheet_category then call symputx("_CATEGORY_", Sheet_category);
     run;
-
     %put &_CATEGORY_;
 
     *Export the datasets to the "ADS" directory (only AE_REPORT, COMMITTEES_OPINION and MULTIPLE);
     %if %upcase(&_CATEGORY_) in (AE_REPORT COMMITTEES_OPINION MULTIPLE) %then %do;
 
-        *Export the datasets as SAS datasets;
-        data libads.&ds; set xxx_&ds; run;
-
-        *Export them to CSV (Converting missing values to null);
-        options missing=' ';
-        %DS2CSV (data=xxx_&ds, runmode=b, csvfile=&ads.\&ds..csv, labels=N);
-        options missing='.';
+        *If there is an allocation dataset ("group"), add it to the datasets;
+        %if %sysfunc(exist(group)) %then %do;
+          data xxx_&ds;
+              merge xxx_&ds(in=a) group;
+              by SUBJID;
+              if a;
+          run;
+        %end;
 
         *Create new datasets to show contents of the datasets;
         data &ds._contents;
@@ -797,6 +794,12 @@ proc sort data=option_f; by Sheet_alias_name; run;
             keep libname memname name type length label format informat;
         run;
 
+        *Export the datasets as SAS datasets;
+        data libads.&ds; set xxx_&ds; run;
+        *Export them to CSV (Converting missing values to null);
+        options missing=' ';
+        %DS2CSV (data=xxx_&ds, runmode=b, csvfile=&ads.\&ds..csv, labels=N);
+        options missing='.';
         *Export the "contents" dataset;
         proc export data=&ds._contents
             outfile="&ads.\&ds._contents.csv"
@@ -807,22 +810,21 @@ proc sort data=option_f; by Sheet_alias_name; run;
 
     *For Ptdata;
     %if not(%upcase(&_CATEGORY_) in (AE_REPORT COMMITTEES_OPINION MULTIPLE)) %then %do;
-        data yyy_&ds.; set xxx_&ds.; run;
+        data yyy_&ds; set xxx_&ds; run;
+        *Sort by SUBJID (character);
+        proc sort data=yyy_&ds.; by SUBJID; run;
     %end;
 
-    *Sort by SUBJID (character);
-    proc sort data=yyy_&ds.; by SUBJID; run;
-
     %end;
 
-%mend INTEGRATE;
+%mend AGGREGATE;
 
 *Execute the MACRO (INTEGRATE);
 
 %macro EXECUTE;
 
     %do i=1 %to &TOTAL;
-        %INTEGRATE (&&SUBJ&i);
+        %AGGREGATE (&&SUBJ&i);
     %end;
 
 %mend EXECUTE;
@@ -830,52 +832,62 @@ proc sort data=option_f; by Sheet_alias_name; run;
 %EXECUTE;
 
 
-*^^^^^^^^^^^^^^^^^^^^Ptdata (Combined Dataset)^^^^^^^^^^^^^^^^^^^^;
+*------------------------------Ptdata (Combined Dataset)------------------------------;
 
-*Get contents of datasets except for "AE, SAE and COMMITTEES_OPINION";
-data to_combine;
-    set sashelp.vtable (where=(libname='WORK'));
-    if memname=:'YYY';
-run;
+%macro COMBINE_into_PTDATA;
 
-*Create a macro variable that holds the names of the datasets;
-proc sql noprint;
-    select cats(memname)
-      into : _DSLIST_ separated by " "
-    from to_combine;
-quit;
+    *Get contents of datasets except for "AE, SAE and COMMITTEES_OPINION";
+    data to_combine;
+        set sashelp.vtable (where=(libname='WORK'));
+        if memname=:'YYY';
+    run;
 
-%put &_DSLIST_;
+    *Create a macro variable that holds the names of the datasets;
+    proc sql noprint;
+        select cats(memname)
+          into : _DSLIST_ separated by " "
+        from to_combine;
+    quit;
+    %put &_DSLIST_;
+    
+    *Create "ptdata" by merging the datasets;
+    data ptdata;
+        merge &_DSLIST_;
+        by SUBJID;
+    run;
+    proc sort data=ptdata sortseq=linguistic (numeric_collation=on); by SUBJID; run;
 
-*Create "ptdata" by merging the datasets;
-data ptdata;
-    merge &_DSLIST_;
-    by SUBJID;
-run;
+    *If there is an allocation dataset ("group"), add it to the datasets;
+    %if %sysfunc(exist(group)) %then %do;
+      data ptdata;
+          merge ptdata(in=a) group;
+          by SUBJID;
+          if a;
+      run;
+    %end;
 
-proc sort data=ptdata sortseq=linguistic (numeric_collation=on); by SUBJID; run;
+    *Create new dataset to show contents of the dataset;
+    data ptdata_contents;
+        set sashelp.vcolumn;
+        where libname="LIBADS" and memname="PTDATA";
+        keep libname memname name type length label format informat;
+    run;
 
-*Export the dataset as SAS datasets;
-data libads.ptdata; set ptdata; run;
+    *Export the dataset as SAS datasets;
+    data libads.ptdata; set ptdata; run;
+    *Export "ptdata" to CSV (Converting missing values to null);
+    options missing=' ';
+    %DS2CSV (data=ptdata, runmode=b, csvfile=&ads.\ptdata.csv, labels=N);
+    options missing='.';
+    *Export the "contents" dataset;
+    proc export data=ptdata_contents
+        outfile="&ads.\ptdata_contents.csv"
+        dbms=csv replace;
+    run;
 
-*Export "ptdata" to CSV (Converting missing values to null);
-options missing=' ';
-%DS2CSV (data=ptdata, runmode=b, csvfile=&ads.\ptdata.csv, labels=N);
-options missing='.';
+%mend COMBINE_into_PTDATA;
 
-*Create new dataset to show contents of the dataset;
-data ptdata_contents;
-    set sashelp.vcolumn;
-    where libname="LIBADS" and memname="PTDATA";
-    keep libname memname name type length label format informat;
-run;
-
-*Export the "contents" dataset;
-proc export data=ptdata_contents
-    outfile="&ads.\ptdata_contents.csv"
-    dbms=csv replace;
-run;
-
+%COMBINE_into_PTDATA;
 
 
 *__________EoF__________;
