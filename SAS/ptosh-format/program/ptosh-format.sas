@@ -2,18 +2,20 @@
 Program Name : ptosh-format.sas
 Purpose : Automatic Data Conversion of Ptosh-based Data to ADS
 Author : Kato Kiroku
-Date : 2019-04-11
+Date : 2019-04-19
 SAS version : 9.4
+**************************************************************************
+ptosh-format version : 2.1
 **************************************************************************;
 
 /*NOTES*/
   /*1. This program works only when file paths are as listed below.*/
-      /* (Study Name)  -         input         -      ext      -  option.csv */
-      /* (Study Name)  -         input         -      ext      -  sheet.csv */
-      /* (Study Name)  -         input         -  rawdata  -  (rawdata).csv */
-      /* (Study Name)  -  ptosh-format */
+      /* (Trial Folder)  -        input        -      ext      -  option.csv */
+      /* (Trial Folder)  -        input        -      ext      -  sheet.csv */
+      /* (Trial Folder)  -        input        -  rawdata  -  (rawdata).csv */
+      /* (Trial Folder)  -  ptosh-format  */
   /*2. Converted data will be exported to the "ADS" directory shown below.*/
-      /* (Study Name)  -  ptosh-format  -  ads */
+      /* (Trial Folder)  -  ptosh-format  -  ads */
 
 
 proc datasets library=work kill nolist; quit;
@@ -45,6 +47,8 @@ options mprint mlogic symbolgen minoperator;
 
 %let cwd=%FIND_WD;
 %put &cwd.;
+
+proc printto log="&cwd.\ptosh-format\log\ptosh-format.log" new; run;
 
 libname libraw "&cwd.\input\rawdata" access=readonly;
 libname libext "&cwd.\input\ext" access=readonly;
@@ -889,5 +893,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
 
 %COMBINE_into_PTDATA;
 
+
+proc printto; run;
 
 *__________EoF__________;
