@@ -2,18 +2,20 @@
 Program Name : ptosh-format.sas
 Purpose : Automatic Data Conversion of Ptosh-based Data to ADS
 Author : Kato Kiroku
-Date : 2019-04-11
+Date : 2019-04-19
 SAS version : 9.4
+**************************************************************************
+ptosh-format version : 2.1
 **************************************************************************;
 
 /*NOTES*/
   /*1. This program works only when file paths are as listed below.*/
-      /* (Study Name)  -         input         -      ext      -  option.csv */
-      /* (Study Name)  -         input         -      ext      -  sheet.csv */
-      /* (Study Name)  -         input         -  rawdata  -  (rawdata).csv */
-      /* (Study Name)  -  ptosh-format */
+      /* (Trial Folder)  -        input        -      ext      -  option.csv */
+      /* (Trial Folder)  -        input        -      ext      -  sheet.csv */
+      /* (Trial Folder)  -        input        -  rawdata  -  (rawdata).csv */
+      /* (Trial Folder)  -  ptosh-format  */
   /*2. Converted data will be exported to the "ADS" directory shown below.*/
-      /* (Study Name)  -  ptosh-format  -  ads */
+      /* (Trial Folder)  -  ptosh-format  -  ads */
 
 
 proc datasets library=work kill nolist; quit;
@@ -46,6 +48,8 @@ options mprint mlogic symbolgen minoperator;
 %let cwd=%FIND_WD;
 %put &cwd.;
 
+proc printto log="&cwd.\ptosh-format\log\ptosh-format.log" new; run;
+
 libname libraw "&cwd.\input\rawdata" access=readonly;
 libname libext "&cwd.\input\ext" access=readonly;
 libname libads "&cwd.\ptosh-format\ads";
@@ -54,7 +58,7 @@ libname library "&cwd.\ptosh-format\ads";
 %let raw=&cwd.\input\rawdata;
 %let ext=&cwd.\input\ext;
 %let ads=&cwd.\ptosh-format\ads;
-%let tmp=&cwd.\ptosh-format\tmp;
+%let temp=&cwd.\ptosh-format\temp;
 
 
 *------------------------------Sheet.csv and Option.csv------------------------------;
@@ -174,7 +178,7 @@ run;
               *Find and remove carriage returns or line breaks in (rawdata).csv;
               data _NULL_;
                   infile "&dir.\%qsysfunc(dread(&did, &i))" recfm=n;
-                  file "&tmp.\tmp&cnt..csv" recfm=n;
+                  file "&temp.\temp&cnt..csv" recfm=n;
                     retain Flag 0;
                     input a $char1.;
                     if a='"' then
@@ -192,8 +196,8 @@ run;
                   EXIT:
               run;
 
-              proc import datafile="&tmp.\tmp&cnt..csv"
-                  out=tmp&cnt
+              proc import datafile="&temp.\temp&cnt..csv"
+                  out=temp&cnt
                   dbms=csv replace;
                   guessingrows=999;
               run;
@@ -207,7 +211,7 @@ run;
               run;
               %if &&csvname_&cnt in (0 1 2 3 4 5 6 7 8 9) %then %do;
                 proc datasets library=work noprint;
-                    change tmp&cnt=group;
+                    change temp&cnt=group;
                 run; quit;
               %end;
 
@@ -231,19 +235,19 @@ run;
 %macro CHANGE_DS_NAME;
 
     %do i=1 %to &cnt;
-      %if %sysfunc(exist(tmp&i.)) %then %do;
+      %if %sysfunc(exist(temp&i)) %then %do;
 
-        data tmp&i.;
+        data temp&i;
             length c $50;
-            set tmp&i.;
+            set temp&i;
             *Convert '-' to '_' since it is impossible to use the '-' symbol as a variable name;
             c=translate(VAR1, '_', '-');
             drop VAR1;
             rename c=VAR1;
         run;
-        proc sort data=tmp&i.; by VAR1; run;
+        proc sort data=temp&i; by VAR1; run;
         data _NULL_;
-            set tmp&i. end=END;
+            set temp&i end=END;
             by VAR1;
             if _N_=1 then call symputx("NAME", VAR1);
             if END then call symputx("NAME4C", VAR1);
@@ -254,7 +258,7 @@ run;
         *When "VAR1" has a sheet name, rename the dataset;
         %if &NAME=&NAME4C %then %do;
           proc datasets library=work noprint;
-              change tmp&i.=&NAME.;
+              change temp&i=&NAME;
           run; quit;
           *Only in "SAE_REPORT", remove duplicate observations;
           %if %upcase(&name)=SAE_REPORT %then %do;
@@ -889,5 +893,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
 
 %COMBINE_into_PTDATA;
 
+
+proc printto; run;
 
 *__________EoF__________;
