@@ -203,3 +203,22 @@ CreateDataFrame <- function(col_names, row_count=0){
   }
   return(df)
 }
+#' @title
+#' SetAllocation
+#' @description
+#' Set allocation by subjid
+#' @param
+#' allocation_csv : Allocation source data frame
+#' input_df : Data frame to be allocated
+#' @return
+#' data frame
+#' @examples
+#' SetAllocation(allocation_csv, ptdata)
+SetAllocation <- function(allocation_csv, input_df){
+  allocation_key <- colnames(allocation_csv)[kAllocationSubjidColumnIndex]
+  # Sort input_df by subjid
+  sort_input_df <- input_df[order(input_df[kRegistration_colname]), ]
+  # Merge by subjid
+  output_df <- merge(sort_input_df, allocation_csv, by.x=kRegistration_colname, by.y=allocation_key, all.x=T)
+  return(output_df)
+}

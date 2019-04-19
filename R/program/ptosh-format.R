@@ -2,40 +2,24 @@
 # Created date: 2018/12/19
 # Author: mariko ohtsuka
 # library, function section ------
-# install.packages("tidyr")
-# install.packages("here")
-library(tidyr)
-library(here)
-# Output log ------
+#if(!require("tidyr")){
+#  install.packages("tidyr")
+#  library(tidyr)
+#}
+if(!require("here")){
+  install.packages("here")
+  library(here)
+}
 Sys.setenv("TZ" = "Asia/Tokyo")
-parent_path <- here()
+# Output log ------
 # log output path
-log_path <- here("R", "log", "")
+log_path <- file.path(here(), "R", "log")
 if (file.exists(log_path) == F) {
   dir.create(log_path)
 }
-sink(here("R", "log", "log.txt"))
+sink(file.path(log_path, "log.txt"))
 # Function section ------
-source(here("R", "programs", "common_function.R"))
-#' @title
-#' SetAllocation
-#' @description
-#' Set allocation by subjid
-#' @param
-#' allocation_csv : Allocation source data frame
-#' input_df : Data frame to be allocated
-#' @return
-#' data frame
-#' @examples
-#' SetAllocation(allocation_csv, ptdata)
-SetAllocation <- function(allocation_csv, input_df){
-  allocation_key <- colnames(allocation_csv)[kAllocationSubjidColumnIndex]
-  # Sort input_df by subjid
-  sort_input_df <- input_df[order(input_df[kRegistration_colname]), ]
-  # Merge by subjid
-  output_df <- merge(sort_input_df, allocation_csv, by.x=kRegistration_colname, by.y=allocation_key, all.x=T)
-  return(output_df)
-}
+source(file.path(here(), "R", "program", "ptosh-format-function.R"))
 # Constant section ------
 ConstAssign("kPtoshRegistrationNumberColumnIndex", 9)  # ptosh_csv$registration_number
 # If the MedDRA code is set in the field, set 0, else set 1
@@ -50,37 +34,35 @@ ConstAssign("kSheet_csv_name", "sheet.csv")
 ConstAssign("kOption_csv_name", "option.csv")
 ConstAssign("kAllocationSubjidColumnIndex", 1)
 ConstAssign("kAllocationAllocationColumnIndex", 2)
+if (Sys.info()[["sysname"]] == "Windows") {
+  temp_delimiter <- "\\"
+} else {
+  temp_delimiter <- "/"
+}
+ConstAssign("kDelimiter", temp_delimiter)
+temp_parent_path <- strsplit(here(), kDelimiter)
+parent_path <- paste(unlist(temp_parent_path)[2:lengths(temp_parent_path) - 1], collapse=temp_delimiter)
+input_path <- file.path(parent_path, "input")
+ext_path <- file.path(input_path, "ext")
+rawdata_path <- file.path(input_path, "rawdata", sep=temp_delimiter)
+output_path <- file.path(here(), "R", "ads")
+if (file.exists(output_path) == F) {
+  dir.create(output_path)
+}
 # Initialize ------
 if (exists(kOutput_DF)) {
   rm(list=kOutput_DF)
 }
-# If the output folder does not exist, create it
-output_used_option_path <- here("R", "used_option_csv", "")
-output_variable_path <- here("R", "variable_list", "")
-output_path <- here("R", "output", "")
-output_dst_path <- here("R", "output", "dst", "")
-if (file.exists(output_used_option_path) == F) {
-  dir.create(output_used_option_path)
-}
-if (file.exists(output_variable_path) == F) {
-  dir.create(output_variable_path)
-}
-if (file.exists(output_path) == F) {
-  dir.create(output_path)
-}
-if (file.exists(output_dst_path) == F) {
-  dir.create(output_dst_path)
-}
 # Input option.csv
-option_csv <- tryCatch(read.csv(here("R", "external", kOption_csv_name), as.is=T, fileEncoding="utf-8",
+option_csv <- tryCatch(read.csv(file.path(ext_path, kOption_csv_name), as.is=T, fileEncoding="utf-8",
                        stringsAsFactors=F, na.strings=""),
-                       warning = function(x){return(read.csv(here("R", "external", kOption_csv_name), as.is=T,
+                       warning = function(x){return(read.csv(file.path(ext_path, kOption_csv_name), as.is=T,
                                                              fileEncoding="cp932", stringsAsFactors=F, na.strings=""))})
 option_used <- NULL
 # Input sheet.csv, delete rows that 'variable' is NA
-sheet_csv <-  tryCatch(read.csv(here("R", "external", kSheet_csv_name), as.is=T, fileEncoding="utf-8",
+sheet_csv <-  tryCatch(read.csv(file.path(ext_path, kSheet_csv_name), as.is=T, fileEncoding="utf-8",
                                 stringsAsFactors=F, na.strings=""),
-                       warning = function(x){return(read.csv(here("R", "external", kSheet_csv_name), as.is=T,
+                       warning = function(x){return(read.csv(file.path(ext_path, kSheet_csv_name), as.is=T,
                                                              fileEncoding="cp932", stringsAsFactors=F, na.strings=""))})
 sheet_csv <- subset(sheet_csv, !is.na(sheet_csv$variable) & !is.na(sheet_csv$FieldItem.label))
 unique_sheet_csv <- sheet_csv[!duplicated(sheet_csv["Sheet.alias_name"]), ]
@@ -101,13 +83,13 @@ df_duplicated <- CheckDuplicated(temp_duplicated_df, df_duplicated, "variable")
 # Check overlap from the beginning and end, OR of both
 if (nrow(df_duplicated) != 0) {
   colnames(df_duplicated) <- c("row", colnames(sheet_csv))
-  write.csv(df_duplicated, paste0(output_path, "/variable_duplicated.csv"), row.names=F, fileEncoding="cp932")
+  write.csv(df_duplicated, file.path(output_path, "variable_duplicated.csv"), row.names=F, fileEncoding="cp932")
   stop("Duplicate variable name")
   Exit()
 }
 # Input ptosh_csv ------
 # Set ptosh_csv's name list
-file_list <- list.files(here("R", "input", ""))
+file_list <- list.files(rawdata_path)
 # Get trial name
 # Replace ex.) "xxx_ae_20190301_1122.csv" -> "xxx_ae"
 temp_file_list <- gsub("_[0-9]{6}_[0-9]{4}.csv", "", file_list)
@@ -124,7 +106,7 @@ trial_name <- row.names(temp_trial_name)
 for (i in 1:length(trial_name)) {
   file_index <- grep(paste0(trial_name[i], "_[0-9]{6}_[0-9]{4}.csv"), file_list)
   if (length(file_index) > 0) {
-    allocation_csv <- read.csv(here("R", "input", file_list[file_index]), as.is=T, na.strings="", fileEncoding="cp932")
+    allocation_csv <- read.csv(file.path(rawdata_path, file_list[file_index]), as.is=T, na.strings="", fileEncoding="cp932")
     if (colnames(allocation_csv)[kAllocationAllocationColumnIndex] == "自動割付") {
       # sort subjid
       allocation_csv <- allocation_csv[order(allocation_csv[kAllocationSubjidColumnIndex]), ]
@@ -141,7 +123,7 @@ for (i in 1:length(alias_name)) {
     ptosh_input <- paste0("rawdata_", alias_name[i])
     ptosh_output <- alias_name[i]
     # ex. rawdata_ae <- read.csv(R-miniCHP_ae_181211_1841.csv)
-    assign(ptosh_input, read.csv(here("R", "input", file_list[file_index]), as.is=T, na.strings="",
+    assign(ptosh_input, read.csv(file.path(rawdata_path, file_list[file_index]), as.is=T, na.strings="",
                                    fileEncoding="cp932"))
     # Select sheet_csv's rows if sheet_csv$Sheet.alias_name and ptosh_csv$alias_name is same value
     df_itemlist <- subset(sheet_csv, sheet_csv[ ,"Sheet.alias_name"] == alias_name[i])
@@ -214,7 +196,7 @@ for (i in 1:length(alias_name)) {
       if (exists("allocation_csv")) {
         assign(ptosh_output, SetAllocation(allocation_csv, get(ptosh_output)))
       }
-      OutputDF(ptosh_output, output_path, output_dst_path)
+      OutputDF(ptosh_output, output_path, output_path)
     } else {
       # Merge
       if (!exists(kOutput_DF)) {
@@ -234,15 +216,15 @@ if (exists(kOutput_DF)) {
   if (exists("allocation_csv")) {
     assign(kOutput_DF, SetAllocation(allocation_csv, get(kOutput_DF)))
   }
-  OutputDF(kOutput_DF, output_path, output_dst_path)
+  OutputDF(kOutput_DF, output_path, output_path)
 } else {
   warning("No output ptdata")
 }
 # Output used option list
 output_option_csv <- subset(option_csv, Option.name %in% unique(option_used))
-OutputDF("output_option_csv", output_used_option_path, output_used_option_path)
+OutputDF("output_option_csv", output_path, output_path)
 # Output variable name list
 output_sheet_csv <- sheet_csv[ ,c("Sheet.alias_name", "FieldItem.label", "variable")]
-OutputDF("output_sheet_csv", output_variable_path, output_variable_path)
+OutputDF("output_sheet_csv", output_path, output_path)
 # Reset the log output destination
 sink()
