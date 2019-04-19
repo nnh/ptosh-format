@@ -54,9 +54,6 @@ ConstAssign("kAllocationAllocationColumnIndex", 2)
 if (exists(kOutput_DF)) {
   rm(list=kOutput_DF)
 }
-# Setting of input/output path
-input_path <- here("R", "input", "")
-external_path <<- here("R", "external", "")
 # If the output folder does not exist, create it
 output_used_option_path <- here("R", "used_option_csv", "")
 output_variable_path <- here("R", "variable_list", "")
@@ -75,15 +72,15 @@ if (file.exists(output_dst_path) == F) {
   dir.create(output_dst_path)
 }
 # Input option.csv
-option_csv <- tryCatch(read.csv(paste0(external_path, kOption_csv_name), as.is=T, fileEncoding="utf-8",
+option_csv <- tryCatch(read.csv(here("R", "external", kOption_csv_name), as.is=T, fileEncoding="utf-8",
                        stringsAsFactors=F, na.strings=""),
-                       warning = function(x){return(read.csv(paste0(external_path, kOption_csv_name), as.is=T,
+                       warning = function(x){return(read.csv(here("R", "external", kOption_csv_name), as.is=T,
                                                              fileEncoding="cp932", stringsAsFactors=F, na.strings=""))})
 option_used <- NULL
 # Input sheet.csv, delete rows that 'variable' is NA
-sheet_csv <-  tryCatch(read.csv(paste0(external_path, kSheet_csv_name), as.is=T, fileEncoding="utf-8",
+sheet_csv <-  tryCatch(read.csv(here("R", "external", kSheet_csv_name), as.is=T, fileEncoding="utf-8",
                                 stringsAsFactors=F, na.strings=""),
-                       warning = function(x){return(read.csv(paste0(external_path, kSheet_csv_name), as.is=T,
+                       warning = function(x){return(read.csv(here("R", "external", kSheet_csv_name), as.is=T,
                                                              fileEncoding="cp932", stringsAsFactors=F, na.strings=""))})
 sheet_csv <- subset(sheet_csv, !is.na(sheet_csv$variable) & !is.na(sheet_csv$FieldItem.label))
 unique_sheet_csv <- sheet_csv[!duplicated(sheet_csv["Sheet.alias_name"]), ]
@@ -110,7 +107,7 @@ if (nrow(df_duplicated) != 0) {
 }
 # Input ptosh_csv ------
 # Set ptosh_csv's name list
-file_list <- list.files(input_path)
+file_list <- list.files(here("R", "input", ""))
 # Get trial name
 # Replace ex.) "xxx_ae_20190301_1122.csv" -> "xxx_ae"
 temp_file_list <- gsub("_[0-9]{6}_[0-9]{4}.csv", "", file_list)
@@ -127,7 +124,7 @@ trial_name <- row.names(temp_trial_name)
 for (i in 1:length(trial_name)) {
   file_index <- grep(paste0(trial_name[i], "_[0-9]{6}_[0-9]{4}.csv"), file_list)
   if (length(file_index) > 0) {
-    allocation_csv <- read.csv(paste0(input_path, file_list[file_index]), as.is=T, na.strings="", fileEncoding="cp932")
+    allocation_csv <- read.csv(here("R", "input", file_list[file_index]), as.is=T, na.strings="", fileEncoding="cp932")
     if (colnames(allocation_csv)[kAllocationAllocationColumnIndex] == "自動割付") {
       # sort subjid
       allocation_csv <- allocation_csv[order(allocation_csv[kAllocationSubjidColumnIndex]), ]
@@ -144,7 +141,7 @@ for (i in 1:length(alias_name)) {
     ptosh_input <- paste0("rawdata_", alias_name[i])
     ptosh_output <- alias_name[i]
     # ex. rawdata_ae <- read.csv(R-miniCHP_ae_181211_1841.csv)
-    assign(ptosh_input, read.csv(paste0(input_path, file_list[file_index]), as.is=T, na.strings="",
+    assign(ptosh_input, read.csv(here("R", "input", file_list[file_index]), as.is=T, na.strings="",
                                    fileEncoding="cp932"))
     # Select sheet_csv's rows if sheet_csv$Sheet.alias_name and ptosh_csv$alias_name is same value
     df_itemlist <- subset(sheet_csv, sheet_csv[ ,"Sheet.alias_name"] == alias_name[i])
