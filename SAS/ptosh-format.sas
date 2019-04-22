@@ -2,7 +2,7 @@
 Program Name : ptosh-format.sas
 Purpose : Automatic Data Conversion of Ptosh-based Data to ADS
 Author : Kato Kiroku
-Date : 2019-04-19
+Date : 2019-04-22
 SAS version : 9.4
 **************************************************************************
 ptosh-format version : 2.1
