@@ -2,13 +2,13 @@
 # Created date: 2018/12/19
 # Author: mariko ohtsuka
 # library, function section ------
-#if(!require("tidyr")){
-#  install.packages("tidyr")
-#  library(tidyr)
-#}
+if(!require("tidyr")){
+  install.packages("tidyr")
+  library("tidyr")
+}
 if(!require("here")){
   install.packages("here")
-  library(here)
+  library("here")
 }
 Sys.setenv("TZ" = "Asia/Tokyo")
 # Output log ------
@@ -35,7 +35,7 @@ ConstAssign("kOption_csv_name", "option.csv")
 ConstAssign("kAllocationSubjidColumnIndex", 1)
 ConstAssign("kAllocationAllocationColumnIndex", 2)
 if (Sys.info()[["sysname"]] == "Windows") {
-  temp_delimiter <- "\\"
+  temp_delimiter <- "/"
 } else {
   temp_delimiter <- "/"
 }
@@ -53,17 +53,32 @@ if (file.exists(output_path) == F) {
 if (exists(kOutput_DF)) {
   rm(list=kOutput_DF)
 }
+ReadCsvMultipleEncoding <- function(){
+  tryCatch(read.csv(),
+           warning = )
+}
 # Input option.csv
 option_csv <- tryCatch(read.csv(file.path(ext_path, kOption_csv_name), as.is=T, fileEncoding="utf-8",
                        stringsAsFactors=F, na.strings=""),
-                       warning = function(x){return(read.csv(file.path(ext_path, kOption_csv_name), as.is=T,
-                                                             fileEncoding="cp932", stringsAsFactors=F, na.strings=""))})
+                       warning = function(x){return(tryCatch(read.csv(file.path(ext_path, kOption_csv_name), as.is=T, 
+                                                                      fileEncoding="cp932", stringsAsFactors=F, 
+                                                                      na.strings=""),
+                                                             warning = function(x){return(
+                                                                         read.csv(file.path(ext_path, kOption_csv_name), 
+                                                                                  as.is=T, fileEncoding="UTF-8-BOM", 
+                                                                                  stringsAsFactors=F, na.strings=""))}))})
 option_used <- NULL
 # Input sheet.csv, delete rows that 'variable' is NA
-sheet_csv <-  tryCatch(read.csv(file.path(ext_path, kSheet_csv_name), as.is=T, fileEncoding="utf-8",
+sheet_csv <- tryCatch(read.csv(file.path(ext_path, kSheet_csv_name), as.is=T, fileEncoding="utf-8",
                                 stringsAsFactors=F, na.strings=""),
-                       warning = function(x){return(read.csv(file.path(ext_path, kSheet_csv_name), as.is=T,
-                                                             fileEncoding="cp932", stringsAsFactors=F, na.strings=""))})
+                       warning = function(x){return(tryCatch(read.csv(file.path(ext_path, kSheet_csv_name), as.is=T, 
+                                                                      fileEncoding="cp932", stringsAsFactors=F, 
+                                                                      na.strings=""),
+                                                             warning = function(x){return(
+                                                                         read.csv(file.path(ext_path, kSheet_csv_name), 
+                                                                                  as.is=T, fileEncoding="UTF-8-BOM", 
+                                                                                  stringsAsFactors=F, na.strings=""))}))})
+
 sheet_csv <- subset(sheet_csv, !is.na(sheet_csv$variable) & !is.na(sheet_csv$FieldItem.label))
 unique_sheet_csv <- sheet_csv[!duplicated(sheet_csv["Sheet.alias_name"]), ]
 alias_name <- unique_sheet_csv$Sheet.alias_name
