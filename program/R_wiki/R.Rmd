@@ -1,0 +1,94 @@
+---
+title: "ptosh-format.Rの使い方"
+date: "`r Sys.Date()`"  
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=F, comment=NA)
+```
+
+# （初回のみ）tidyr, hereパッケージのインストール
+Rを起動します。
+Rのメニュー「パッケージ」から、「パッケージのインストール」を選択します。  
+「Secure CRAN Mirrors」というポップアップが出ます。「Japan(Tokyo)[https]」を選択し、OKをクリックしてください。  
+「Packages」というポップアップが出ます。「tidyr」を選択し、OKをクリックしてください。  
+「質問」のポップアップが複数回出ます。OKをクリックしてください。  
+同様に「here」のパッケージもインストールしてください。
+
+```{r package_install, include=F}
+temp_path <- paste0(pic_path, "/r_package_install.png")
+temp_message <- "パッケージのインストール"
+if (message_f == T) {
+  print(temp_message)
+}
+```
+![`r temp_message`](`r temp_path`)  
+
+# 入力ファイルの設定
+「ptosh-format-master」フォルダ内の「R」フォルダに「input」「external」の2フォルダを作成してください。  
+「input」フォルダに、該当試験に関するcsvファイルを、「external」フォルダに、「option.csv」と「sheet.csv」を格納します。  
+
+```{r input, include=F}
+temp_path <- paste0(pic_path, "/r_input.png")
+temp_message <- "入力ファイルの設定"
+if (message_f == T) {
+  print(temp_message)
+}
+```
+![`r temp_message`](`r temp_path`)  
+
+# 作業ディレクトリの設定
+```{r cd, include=T}
+temp_path <- paste0(pic_path, "/r_cd.png")
+temp_message <- "Rを起動し、Rのメニュー「ファイル」から、「ディレクトリの変更」を選択します。"
+if (message_f == T) {
+  print(temp_message)
+}
+```
+![`r temp_message`](`r temp_path`)  
+
+```{r cd2, include=T}
+temp_path <- paste0(pic_path, "/r_cd_2.png")
+temp_message <- "「ptosh-format-master」フォルダを指定してください。"
+if (message_f == T) {
+  print(temp_message)
+}
+```
+![`r temp_message`](`r temp_path`)  
+
+# 処理の実行
+```{r exec1, include=T}
+temp_path <- paste0(pic_path, "/r_exec_1.png")
+temp_message <- "Rのメニュー「ファイル」から、「スクリプトを開く」を選択します。"
+if (message_f == T) {
+  print(temp_message)
+}
+```
+![`r temp_message`](`r temp_path`)  
+
+```{r exec2, include=T}
+temp_path <- paste0(pic_path, "/r_exec_2.png")
+temp_message <- "「ptosh-format-master」-「R」-「programs」-「ptosh-format.R」を開きます。"
+if (message_f == T) {
+  print(temp_message)
+}
+```
+![`r temp_message`](`r temp_path`)  
+
+```{r exec3, include=T}
+temp_path <- paste0(pic_path, "/r_exec_3.png")
+temp_message <- "テキストファイルが開きます。右クリックし、「全て選択」を選んでください。"
+if (message_f == T) {
+  print(temp_message)
+}
+```
+![`r temp_message`](`r temp_path`)  
+
+```{r exec4, include=T}
+temp_path <- paste0(pic_path, "/r_exec_4.png")
+temp_message <- "選択状態のまま、右クリックして「カーソル行または選択中のRコードを実行」を選んでください。"
+if (message_f == T) {
+  print(temp_message)
+}
+```
+![`r temp_message`](`r temp_path`)  
