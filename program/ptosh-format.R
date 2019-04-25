@@ -17,7 +17,7 @@ log_path <- file.path(here(), "log")
 if (file.exists(log_path) == F) {
   dir.create(log_path)
 }
-sink(file.path(log_path, "log.txt"))
+sink(file.path(log_path, "log.txt"), split=T)
 # Function section ------
 source(file.path(here(), "program", "ptosh-format-function.R"))
 # Constant section ------
@@ -52,10 +52,6 @@ if (file.exists(output_path) == F) {
 # Initialize ------
 if (exists(kOutput_DF)) {
   rm(list=kOutput_DF)
-}
-ReadCsvMultipleEncoding <- function(){
-  tryCatch(read.csv(),
-           warning = )
 }
 # Input option.csv
 option_csv <- tryCatch(read.csv(file.path(ext_path, kOption_csv_name), as.is=T, fileEncoding="utf-8",
