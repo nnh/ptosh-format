@@ -2,7 +2,7 @@
 Program Name : ptosh-format.sas
 Purpose : Automatic Data Conversion of Ptosh-based Data to ADS
 Author : Kato Kiroku
-Date : 2019-04-22
+Date : 2019-04-26
 SAS version : 9.4
 **************************************************************************
 ptosh-format version : 2.1
@@ -108,7 +108,7 @@ run;
 
     *If duplicate variables are found, let "_WARNING_" hold the variable names;
     proc sql noprint;
-        select cats(variable)
+        select quote(strip(variable))
           into : _WARNING_ separated by " "
         from sheet_vcount
           where count>1;
@@ -123,7 +123,7 @@ run;
     %if &_WARNING_ NE %then %do;
       data variable_duplicated;
           set sheet;
-          where variable in (&_WARNING_.);
+          where variable in (&_WARNING_);
       run;
       *Export a dataset about the duplicate variables;
       proc export data=variable_duplicated
