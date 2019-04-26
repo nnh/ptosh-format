@@ -5,7 +5,7 @@ Author : Kato Kiroku
 Date : 2019-04-26
 SAS version : 9.4
 **************************************************************************
-ptosh-format version : 2.1
+ptosh-format version : 2.2
 **************************************************************************;
 
 /*NOTES*/
@@ -46,19 +46,24 @@ options mprint mlogic symbolgen minoperator;
 %mend FIND_WD;
 
 %let cwd=%FIND_WD;
-%put &cwd.;
+%put &cwd;
+
+%let create_log_dir=%sysfunc(dcreate(log, &cwd.\ptosh-format));
 
 proc printto log="&cwd.\ptosh-format\log\ptosh-format.log" new; run;
+%put %sysfunc(date(), yymmdd10.);
+
+%let raw=&cwd.\input\rawdata;
+%let ext=&cwd.\input\ext;
+%let create_ads_dir=%sysfunc(dcreate(ads, &cwd.\ptosh-format));
+%let ads=&cwd.\ptosh-format\ads;
+%let create_temp_dir=%sysfunc(dcreate(temp, &cwd.\ptosh-format));
+%let temp=&cwd.\ptosh-format\temp;
 
 libname libraw "&cwd.\input\rawdata" access=readonly;
 libname libext "&cwd.\input\ext" access=readonly;
 libname libads "&cwd.\ptosh-format\ads";
 libname library "&cwd.\ptosh-format\ads";
-
-%let raw=&cwd.\input\rawdata;
-%let ext=&cwd.\input\ext;
-%let ads=&cwd.\ptosh-format\ads;
-%let temp=&cwd.\ptosh-format\temp;
 
 
 *------------------------------Sheet.csv and Option.csv------------------------------;
