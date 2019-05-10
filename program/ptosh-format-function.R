@@ -41,8 +41,13 @@ CheckColname <- function(col_name, df){
 #' No return value
 OutputDF <- function(df, output_csv_path, output_rda_path){
   # Output csv and R_dataframe
-  write.csv(get(df), paste0(output_csv_path, "/", df, ".csv"), na='""', row.names=F,
-            fileEncoding=kOutput_csv_fileEncoding, eol=kOutput_csv_eol)
+  if (Sys.info()[["sysname"]] == "Windows") {
+    write.csv(get(df), paste0(output_csv_path, "/", df, ".csv"), na='""', row.names=F,
+              fileEncoding=kOutput_csv_fileEncoding)
+  } else {
+    write.csv(get(df), paste0(output_csv_path, "/", df, ".csv"), na='""', row.names=F,
+              fileEncoding=kOutput_csv_fileEncoding, eol=kOutput_csv_eol)
+  }
   save(list=df, file=(paste0(output_rda_path, "/", df, ".Rda")))
 }
 #' @title
