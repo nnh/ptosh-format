@@ -225,5 +225,8 @@ SetAllocation <- function(allocation_csv, input_df){
   sort_input_df <- input_df[order(input_df[kRegistration_colname]), ]
   # Merge by subjid
   output_df <- merge(sort_input_df, allocation_csv, by.x=kRegistration_colname, by.y=allocation_key, all.x=T)
+  # Change column name
+  temp_colnames <- c(colnames(input_df), "group")
+  colnames(output_df) <- temp_colnames
   return(output_df)
 }
