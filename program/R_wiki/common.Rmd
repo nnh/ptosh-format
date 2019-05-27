@@ -52,9 +52,18 @@ if (message_f == T) {
 
 ![`r temp_message`](`r temp_path`)
 
-```{r zip_copy, include=T}
+```{r zip_copy, include=T, tidy=T, tidy.opts=list(width.cutoff=5)}
 temp_path <- paste0(pic_path, "/zip_copy.png")
-temp_message <- "ダブルクリック（設定によって異なる場合があります）すると「ptosh-format-master」というフォルダが開きます。フォルダをコピーし、デスクトップ等任意の場所に貼り付けてください。"
+temp_message <- "ダウンロードした「ptosh-format-master.zip」をダブルクリックすると「ptosh-format-master」のフォルダが開きます。このフォルダをコピーして解析用フォルダに貼り付けてください。"
+if (message_f == T) {
+  print(temp_message)
+}
+```
+![`r temp_message`](`r temp_path`)  
+
+```{r zip_rename, include=T}
+temp_path <- paste0(pic_path, "/zip_rename.png")
+temp_message <- "「ptosh-format-master」のフォルダ名の「-master」を消し、「ptosh-format」に変更してください。"
 if (message_f == T) {
   print(temp_message)
 }
