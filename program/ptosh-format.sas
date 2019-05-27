@@ -2,16 +2,16 @@
 Program Name : ptosh-format.sas
 Purpose : Automatic Data Conversion of Ptosh-based Data to ADS
 Author : Kato Kiroku
-Date : 2019-04-26
+Date : 2019-05-27
 SAS version : 9.4
 **************************************************************************
-ptosh-format version : 2.2
+ptosh-format version : 2.3
 **************************************************************************;
 
 /*NOTES*/
   /*1. This program works only when file paths are as listed below.*/
-      /* (Trial Folder)  -        input        -      ext      -  option.csv */
-      /* (Trial Folder)  -        input        -      ext      -  sheet.csv */
+      /* (Trial Folder)  -        input        -      ext      -  options.csv */
+      /* (Trial Folder)  -        input        -      ext      -  sheets.csv */
       /* (Trial Folder)  -        input        -  rawdata  -  (rawdata).csv */
       /* (Trial Folder)  -  ptosh-format  */
   /*2. Converted data will be exported to the "ADS" directory shown below.*/
@@ -66,15 +66,15 @@ libname libads "&cwd.\ptosh-format\ads";
 libname library "&cwd.\ptosh-format\ads";
 
 
-*------------------------------Sheet.csv and Option.csv------------------------------;
+*------------------------------Sheets.csv and Options.csv------------------------------;
 
-*Import Sheet.csv and Options.csv from the "EXT" Directory;
-proc import datafile="&ext.\sheet.csv"
+*Import Sheets.csv and Options.csv from the "EXT" Directory;
+proc import datafile="&ext.\sheets.csv"
     out=sheet
     dbms=csv replace;
     guessingrows=9999;
 run;
-proc import datafile="&ext.\option.csv"
+proc import datafile="&ext.\options.csv"
     out=option
     dbms=csv replace;
     guessingrows=9999;
