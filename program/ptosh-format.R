@@ -30,8 +30,8 @@ ConstAssign("kOutput_DF", "ptdata")
 ConstAssign("kMerge_excluded_sheet_category", c("ae_report", "committees_opinion", "multiple"))
 ConstAssign("kOutput_csv_fileEncoding", "cp932")
 ConstAssign("kOutput_csv_eol", "\r\n")  # output_csv's line feed code
-ConstAssign("kSheet_csv_name", "sheet.csv")
-ConstAssign("kOption_csv_name", "option.csv")
+ConstAssign("kSheet_csv_name", "sheets.csv")
+ConstAssign("kOption_csv_name", "options.csv")
 ConstAssign("kAllocationSubjidColumnIndex", 1)
 ConstAssign("kAllocationAllocationColumnIndex", 2)
 if (Sys.info()[["sysname"]] == "Windows") {
