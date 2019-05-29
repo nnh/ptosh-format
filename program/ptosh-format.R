@@ -10,6 +10,10 @@ if(!require("here")){
   install.packages("here")
   library("here")
 }
+if(!require("labelled")){
+  install.packages("labelled")
+  library("labelled")
+}
 Sys.setenv("TZ" = "Asia/Tokyo")
 # Output log ------
 # log output path
@@ -20,6 +24,27 @@ if (file.exists(log_path) == F) {
 sink(file.path(log_path, "log.txt"), split=T)
 # Function section ------
 source(file.path(here(), "program", "ptosh-format-function.R"))
+#' @title
+#' ConvertClass
+#' @description
+#' Convert to numeric or string
+#' @param
+#' df : data frame
+#' @return
+#' converted vector
+ConvertClass <- function(convert_class, df){
+  for (i in 1:ncol(df)) {
+    if (convert_class == "integer") {
+      if (is.numeric(df[ , i])) {
+        df[ , i] <- as.numeric(df[ , i])
+      }
+    }
+    else if (convert_class == "character") {
+        df[ , i] <- as.character(df[ , i])
+    }
+  }
+  return(df[[1]])
+}
 # Constant section ------
 ConstAssign("kPtoshRegistrationNumberColumnIndex", 9)  # ptosh_csv$registration_number
 # If the MedDRA code is set in the field, set 0, else set 1
@@ -193,9 +218,13 @@ for (i in 1:length(alias_name)) {
               temp_factor_colname <- column_name
             }
             factor_data <- temp_ptosh_output[ , temp_factor_colname]
-            temp_ptosh_output[ , temp_factor_colname] <- factor(temp_ptosh_output[ , temp_factor_colname],
-                                                   levels = as.matrix(temp_factor["Option..Value.code"]),
-                                                   labels = as.matrix(temp_factor["Option..Value.name"]))
+            if (!all(is.na(temp_ptosh_output[ , temp_factor_colname]))) {
+              temp_labels <- ConvertClass(class(temp_ptosh_output[,temp_factor_colname]),
+                                          temp_factor["Option..Value.code"])
+              names(temp_labels) <- temp_factor["Option..Value.name"]
+              temp_ptosh_output[ , temp_factor_colname] <- labelled(temp_ptosh_output[ , temp_factor_colname],
+                                                                    temp_labels)
+            }
             option_used <- c(option_used, temp_factor["Option.name"], recursive=T)
           }
         }
