@@ -2,16 +2,16 @@
 Program Name : ptosh-format.sas
 Purpose : Automatic Data Conversion of Ptosh-based Data to ADS
 Author : Kato Kiroku
-Date : 2019-04-26
+Date : 2019-05-28
 SAS version : 9.4
 **************************************************************************
-ptosh-format version : 2.2
+ptosh-format version : 2.3
 **************************************************************************;
 
 /*NOTES*/
   /*1. This program works only when file paths are as listed below.*/
-      /* (Trial Folder)  -        input        -      ext      -  option.csv */
-      /* (Trial Folder)  -        input        -      ext      -  sheet.csv */
+      /* (Trial Folder)  -        input        -      ext      -  options.csv */
+      /* (Trial Folder)  -        input        -      ext      -  sheets.csv */
       /* (Trial Folder)  -        input        -  rawdata  -  (rawdata).csv */
       /* (Trial Folder)  -  ptosh-format  */
   /*2. Converted data will be exported to the "ADS" directory shown below.*/
@@ -19,6 +19,7 @@ ptosh-format version : 2.2
 
 
 proc datasets library=work kill nolist; quit;
+dm log 'clear';
 
 options mprint mlogic symbolgen minoperator;
 
@@ -66,15 +67,15 @@ libname libads "&cwd.\ptosh-format\ads";
 libname library "&cwd.\ptosh-format\ads";
 
 
-*------------------------------Sheet.csv and Option.csv------------------------------;
+*------------------------------Sheets.csv and Options.csv------------------------------;
 
-*Import Sheet.csv and Options.csv from the "EXT" Directory;
-proc import datafile="&ext.\sheet.csv"
+*Import Sheets.csv and Options.csv from the "EXT" Directory;
+proc import datafile="&ext.\sheets.csv"
     out=sheet
     dbms=csv replace;
     guessingrows=9999;
 run;
-proc import datafile="&ext.\option.csv"
+proc import datafile="&ext.\options.csv"
     out=option
     dbms=csv replace;
     guessingrows=9999;
@@ -211,12 +212,20 @@ run;
               %let csvfile_&cnt=%qsysfunc(dread(&did, &i));
               data filename_&cnt;
                   length title $4;
-                  title=substr(compress(scan("&&csvfile_&cnt", 2, '_')), 1, 1); output;
+                  title=substr(compress(scan("&&csvfile_&cnt", 2, '_')), 1, 1);
+                  title_2=scan("&&csvfile_&cnt", 1, '_');
+                  output;
                   call symputx("csvname_&cnt", title, "G");
+                  call symputx("trialname_&cnt", title_2, "G");
               run;
-              %if &&csvname_&cnt in (0 1 2 3 4 5 6 7 8 9) %then %do;
+              %if %upcase(&&trialname_&cnt)=ALLOCATION %then %do;
                 proc datasets library=work noprint;
                     change temp&cnt=group;
+                run; quit;
+              %end;
+              %if &&csvname_&cnt in (0 1 2 3 4 5 6 7 8 9) %then %do;
+                proc datasets library=work noprint;
+                    change temp&cnt=_NOT_YET_DEFINED_;
                 run; quit;
               %end;
 
@@ -457,7 +466,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
         %let _KEEP_=&_KEEP_;
 
         *"_LABEL_" holds "field='FieldItem_label'" for label statement;
-        select catx("=", field, quote(trim(FieldItem_label)))
+        select catx("=", field, quote(compress(FieldItem_label)))
           into : _LABEL_ separated by " "
         from label_&ds.
           where FieldItem_field_type NE "ctcae";
@@ -469,7 +478,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
         %let _LABEL_=&_LABEL_;
 
         *"_RENAME_" holds "field=variable" for rename statement;
-        select catx("=", field, trim(variable))
+        select catx("=", field, compress(variable))
           into : _RENAME_ separated by " "
         from sheet_&ds.
           where FieldItem_field_type NE "ctcae";
@@ -561,7 +570,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
         %let _CTCAE_KP2_=&_CTCAE_KP2_;
 
         *"_CTCAE_LAB_" holds "'FieldItem_label'" for label statement;
-        select cats(quote(trim(FieldItem_label)))
+        select cats(quote(compress(FieldItem_label)))
           into : _CTCAE_LAB_ separated by " "
         from sheet_&ds.
           where FieldItem_field_type="ctcae";
@@ -573,7 +582,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
         %let _CTCAE_LAB_=&_CTCAE_LAB_;
 
         *"_CTCAE_VAR_" holds "variable" to rename CTCAE variables;
-        select cats(variable)
+        select compress(variable)
           into : _CTCAE_VAR_ separated by " "
         from sheet_&ds.
           where FieldItem_field_type="ctcae";
@@ -585,7 +594,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
         %let _CTCAE_VAR_=&_CTCAE_VAR_;
 
         *"_CTCAE_FRM_" holds "variable FMTNAME" for format statement;
-        select catx(" ", trim(variable) || '_trm', trim(FMTNAME) || '.')
+        select catx(" ", compress(variable) || '_trm', trim(FMTNAME) || '.')
           into : _CTCAE_FRM_ separated by " "
         from option_f
           where exists (select * from option_f where Sheet_alias_name="&ds.")
