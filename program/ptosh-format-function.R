@@ -90,7 +90,7 @@ SplitCtcae <- function(df, column_index, term_colname, grade_colname){
 #' sheet_csv : sheet_csv, a row that value 'field_type' is 'checkbox'
 #' ptosh_column_name : ptosh checkbox type field column name
 #' @return
-#' data frame
+#' list
 #' @example
 #' * sheet.csv
 #' Sheet.alias_name|FieldItem.name.tr..field......|FieldItem.field_type|Option.name|variable
@@ -111,12 +111,14 @@ SplitCtcae <- function(df, column_index, term_colname, grade_colname){
 #' abc       |2     |3
 #' abc       |3     |1,5
 #'
-#' * return dataframe
+#' * return[1] dataframe
 #' SUBJID|efgh_1|efgh_3|efgh_5
 #' ---------------------------
 #' 1     |F     |F     |F
 #' 2     |F     |T     |F
 #' 3     |T     |F     |T
+#' * return[2] vector
+#' c("B症状_1", "B症状_3", "B症状_5")
 CreateCheckboxColumns <- function(ptosh_input, sheet_csv, ptosh_column_name){
   option_csv <- ExtractOptionCsv(sheet_csv$Option.name)
   # Create dataframe of number of checkboxes column
@@ -134,7 +136,8 @@ CreateCheckboxColumns <- function(ptosh_input, sheet_csv, ptosh_column_name){
     }
   }
   colnames(checkbox_df) <- paste0(column_name, "_", option_csv$Option..Value.code)
-  return(checkbox_df)
+  temp_var_labels <- paste0(sheet_csv$FieldItem.label, "_", option_csv$Option..Value.code)
+  return(list(checkbox_df, temp_var_labels))
 }
 #' @title
 #' Extract records from option.csv

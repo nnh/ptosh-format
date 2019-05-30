@@ -153,6 +153,7 @@ for (i in 1:length(trial_name)) {
   }
 }
 for (i in 1:length(alias_name)) {
+  temp_var_labels <- "症例登録番号"
   file_index <- grep(paste0("_", alias_name[i] , "_"), file_list)
   # If the csv file does not exist, skip and output warning
   if (length(file_index) > 0) {
@@ -184,6 +185,8 @@ for (i in 1:length(alias_name)) {
             && !is.na(df_itemlist[j, "FieldItem.field_type"])) {
           ctcae_term_colname <- paste0(column_name, "_trm")
           ctcae_grade_colname <- paste0(column_name, "_grd")
+          temp_var_labels <- c(temp_var_labels, paste0(df_itemlist[j, "FieldItem.label"], "有害事象名"),
+                               paste0(df_itemlist[j, "FieldItem.label"], "グレード"))
           temp_cbind_column <- SplitCtcae(sort_ptosh_input, target_column_index, ctcae_term_colname, ctcae_grade_colname)
         }
         else {
@@ -193,12 +196,15 @@ for (i in 1:length(alias_name)) {
             temp_cbind_column[1] <- as.Date(apply(temp_cbind_column, 1, as.character))
           }
           colnames(temp_cbind_column) <- column_name
+          temp_var_labels <- c(temp_var_labels, df_itemlist[j, "FieldItem.label"])
         }
         temp_ptosh_output <- cbind(temp_ptosh_output, temp_cbind_column)
         # Checkbox
         if ((df_itemlist[j, "FieldItem.field_type"] == "checkbox")
             && !is.na(df_itemlist[j, "FieldItem.field_type"])) {
-          temp_cbind_column <- CreateCheckboxColumns(sort_ptosh_input, df_itemlist[j, ], target_column_name)
+          checkboxcolumns_list <- CreateCheckboxColumns(sort_ptosh_input, df_itemlist[j, ], target_column_name)
+          temp_cbind_column <- checkboxcolumns_list[[1]]
+          temp_var_labels <- c(temp_var_labels, checkboxcolumns_list[[2]])
           temp_ptosh_output <- cbind(temp_ptosh_output, temp_cbind_column)
           df_itemlist[j, "Option.name"] <- NA
         }
@@ -221,14 +227,16 @@ for (i in 1:length(alias_name)) {
             if (!all(is.na(temp_ptosh_output[ , temp_factor_colname]))) {
               temp_labels <- ConvertClass(class(temp_ptosh_output[,temp_factor_colname]),
                                           temp_factor["Option..Value.code"])
-              names(temp_labels) <- temp_factor["Option..Value.name"]
+              names(temp_labels) <- temp_factor["Option..Value.name"][[1]]
               temp_ptosh_output[ , temp_factor_colname] <- labelled(temp_ptosh_output[ , temp_factor_colname],
                                                                     temp_labels)
+              temp_ptosh_output[ , temp_factor_colname] <- to_factor(temp_ptosh_output[ , temp_factor_colname])
             }
             option_used <- c(option_used, temp_factor["Option.name"], recursive=T)
           }
         }
       }
+      var_label(temp_ptosh_output) <- temp_var_labels
       assign(ptosh_output, temp_ptosh_output)
     }
     # Edit output dataframe
@@ -244,7 +252,9 @@ for (i in 1:length(alias_name)) {
         colnames(temp_merge_df) <- kRegistration_colname
         assign(kOutput_DF, temp_merge_df)
       }
+      temp_var_labels <- c(unlist(var_label(get(kOutput_DF))), unlist(var_label(get(ptosh_output)))[-1])
       assign(kOutput_DF, merge(get(kOutput_DF), get(ptosh_output), by=kRegistration_colname, all=T))
+      var_label(ptdata) <- temp_var_labels
     }
   } else {
     stop(paste0("No input data", " : ", alias_name[i]))
