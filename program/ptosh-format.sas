@@ -218,11 +218,11 @@ run;
                   call symputx("csvname_&cnt", title, "G");
                   call symputx("trialname_&cnt", title_2, "G");
               run;
-              %if %upcase(&&trialname_&cnt)=ALLOCATION %then %do;
-                proc datasets library=work noprint;
-                    change temp&cnt=group;
-                run; quit;
-              %end;
+/*              %if %upcase(&&trialname_&cnt)=ALLOCATION %then %do;*/
+/*                proc datasets library=work noprint;*/
+/*                    change temp&cnt=group;*/
+/*                run; quit;*/
+/*              %end;*/
               %if &&csvname_&cnt in (0 1 2 3 4 5 6 7 8 9) %then %do;
                 proc datasets library=work noprint;
                     change temp&cnt=_NOT_YET_DEFINED_;
