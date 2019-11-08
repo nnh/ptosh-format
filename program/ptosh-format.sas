@@ -279,7 +279,7 @@ run;
               proc transpose data=sae_report(obs=0) out=sae_report4check;
                   var _all_;
               run;
-              *Find out the name of the variable refered to "final report";
+              *Find out the name of the variable referred to "final report";
               data sae_report4check;
                   set sae_report4check end=final;
                   if final then output;
