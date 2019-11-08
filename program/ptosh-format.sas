@@ -279,6 +279,7 @@ run;
               proc transpose data=sae_report(obs=0) out=sae_report4check;
                   var _all_;
               run;
+              *Find out the name of the variable refered to "final report";
               data sae_report4check;
                   set sae_report4check end=final;
                   if final then output;
@@ -628,7 +629,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
         
         *to NUMERIC;
         %local i v1;
-        %if &_NUM_. ne %then %do;
+        %if &varlist1 ne %then %do;
           %do i=1 %to %sysfunc(countw(&varlist1));
             %let v1=%scan(&varlist1, &i);
             _n_&i=input(&v1, best12.);
@@ -639,7 +640,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
 
         *to DATE-FORMAT;
         %local i v2;
-        %if &_DATE_. ne %then %do;
+        %if &varlist2 ne %then %do;
           %do i=1 %to %sysfunc(countw(&varlist2));
             %let v2=%scan(&varlist2, &i);
             _d_&i=input(&v2, YYMMDD10.);
@@ -651,7 +652,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
 
         *to CTCAE-FORMAT;
         %local i v3 v4 v5;
-        %if &_CTCAE_FLD_. ne %then %do;
+        %if &varlist3 ne %then %do;
           %do i=1 %to %sysfunc(countw(&varlist3));
             %let v3=%scan(&varlist3, &i);
             _c1_&i=scan(&v3, 1, '-'); _c1_n_&i=input(_c1_&i, best12.);
