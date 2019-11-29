@@ -140,16 +140,12 @@ trial_name <- row.names(temp_trial_name)
 # If there are multiple matches, try all
 # read allocation
 for (i in 1:length(trial_name)) {
-  file_index <- grep(paste0(trial_name[i], "_[0-9]{6}_[0-9]{4}.csv"), file_list)
-  if (length(file_index) > 0) {
+  file_index <- grep(paste0("^allocation_" , trial_name[i], "_[0-9]{6}_[0-9]{4}.csv"), file_list)
+  if (length(file_index) == 1) {
     allocation_csv <- read.csv(file.path(rawdata_path, file_list[file_index]), as.is=T, na.strings="", fileEncoding="cp932")
-    if (colnames(allocation_csv)[kAllocationAllocationColumnIndex] == "自動割付") {
-      # sort subjid
-      allocation_csv <- allocation_csv[order(allocation_csv[kAllocationSubjidColumnIndex]), ]
-      break()
-    } else {
-      rm(allocation_csv)
-    }
+    # sort subjid
+    allocation_csv <- allocation_csv[order(allocation_csv[kAllocationSubjidColumnIndex]), ]
+    break()
   }
 }
 for (i in 1:length(alias_name)) {
@@ -230,7 +226,6 @@ for (i in 1:length(alias_name)) {
               names(temp_labels) <- temp_factor["Option..Value.name"][[1]]
               temp_ptosh_output[ , temp_factor_colname] <- labelled(temp_ptosh_output[ , temp_factor_colname],
                                                                     temp_labels)
-              temp_ptosh_output[ , temp_factor_colname] <- to_factor(temp_ptosh_output[ , temp_factor_colname])
             }
             option_used <- c(option_used, temp_factor["Option.name"], recursive=T)
           }
