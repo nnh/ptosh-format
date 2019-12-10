@@ -130,7 +130,7 @@ CreateCheckboxColumns <- function(ptosh_input, sheet_csv, ptosh_column_name){
   option_csv <- ExtractOptionCsv(sheet_csv$Option.name)
   # Create dataframe of number of checkboxes column
   checkbox_df <- data.frame(matrix(rep(F), ncol=nrow(option_csv), nrow=nrow(ptosh_input)))
-  colnames(checkbox_df) <- option_csv$Option..Value.code
+  colnames(checkbox_df) <- paste0("_", option_csv$Option..Value.code)
   checkbox_field_name <- paste0("field", sheet_csv$FieldItem.name.tr..field......)
   for (i in 1:nrow(ptosh_input)) {
     checkbox_field_value <- ptosh_input[i, ptosh_column_name]
@@ -138,7 +138,7 @@ CreateCheckboxColumns <- function(ptosh_input, sheet_csv, ptosh_column_name){
       # If multiple values, split by ','
       temp_checkbox_value <- unlist(strsplit(as.character(checkbox_field_value), ","))
       for (j in 1:length(temp_checkbox_value)) {
-        checkbox_df[i, as.numeric(temp_checkbox_value[j])] <- T
+        checkbox_df[i, paste0("_", temp_checkbox_value[j])] <- T
       }
     }
   }
@@ -149,7 +149,8 @@ CreateCheckboxColumns <- function(ptosh_input, sheet_csv, ptosh_column_name){
 #' @title
 #' Extract records from option.csv
 #' @param
-#' target_name : The value of Option.name
+#' target_name :
+#'  The value of Option.name
 #' @return
 #' data frame
 ExtractOptionCsv <- function(target_name){

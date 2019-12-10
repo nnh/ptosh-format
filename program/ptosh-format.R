@@ -184,8 +184,7 @@ for (i in 1:length(alias_name)) {
           temp_var_labels <- c(temp_var_labels, paste0(df_itemlist[j, "FieldItem.label"], "有害事象名"),
                                paste0(df_itemlist[j, "FieldItem.label"], "グレード"))
           temp_cbind_column <- SplitCtcae(sort_ptosh_input, target_column_index, ctcae_term_colname, ctcae_grade_colname)
-        }
-        else {
+        } else {
           temp_cbind_column <- sort_ptosh_input[target_column_index]
           # Convert from character to date if field type is date
           if (df_itemlist[j, "FieldItem.field_type"] == "date") {
