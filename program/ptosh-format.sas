@@ -1,11 +1,9 @@
 **************************************************************************
-Program Name : ptosh-format.sas
+Program : ptosh-format.sas
 Purpose : Automatic Data Conversion of Ptosh-based Data to ADS
 Author : Kato Kiroku
-Date : 2019-05-28
-SAS version : 9.4
-**************************************************************************
-ptosh-format version : 2.4
+Published : 2019-05-28
+Version : 006.20.03.30
 **************************************************************************;
 
 /*NOTES*/
@@ -454,68 +452,50 @@ proc sort data=option_f; by Sheet_alias_name; run;
     *Create macro variables;
     proc sql noprint;
 
+        *In case there is NOTHING found, let "_KEEP_" hold " " (NULL);
+        %let _KEEP_='';
         *"_KEEP_" holds "field" for keep statement;
         select cats(field)
           into : _KEEP_ separated by " "
         from sheet_&ds.
           where FieldItem_field_type NE "ctcae";
-        *In case there is NOTHING found above, let "_KEEP_" hold " " (NULL);
-        select " "
-          into : _KEEP_ separated by " "
-        from sheet_&ds.
-          where not exists (select * from sheet_&ds. where FieldItem_field_type NE "ctcae");
-        %let _KEEP_=&_KEEP_;
 
+        *In case there is NOTHING found, let "_LABEL_" hold " " (NULL);
+        %let _LABEL_='';
         *"_LABEL_" holds "field='FieldItem_label'" for label statement;
         select catx("=", field, quote(compress(FieldItem_label)))
           into : _LABEL_ separated by " "
         from label_&ds.
           where FieldItem_field_type NE "ctcae";
-        *In case there is NOTHING found above, let "_LABEL_" hold " " (NULL);
-        select " "
-          into : _LABEL_ separated by " "
-        from label_&ds.
-          where not exists (select * from sheet_&ds. where FieldItem_field_type NE "ctcae");
-        %let _LABEL_=&_LABEL_;
 
+        *In case there is NOTHING found, let "_RENAME_" hold " " (NULL);
+        %let _RENAME_='';
         *"_RENAME_" holds "field=variable" for rename statement;
         select catx("=", field, compress(variable))
           into : _RENAME_ separated by " "
         from sheet_&ds.
           where FieldItem_field_type NE "ctcae";
-        *In case there is NOTHING found above, let "_RENAME_" hold " " (NULL);
-        select " "
-          into : _RENAME_ separated by " "
-        from sheet_&ds.
-          where not exists (select * from sheet_&ds. where FieldItem_field_type NE "ctcae");
-        %let _RENAME_=&_RENAME_;
 
+        *In case there is NOTHING found, let "_NUM_" hold " " (NULL);
+        %let _NUM_='';
         *"_NUM_" holds "field" for numeric conversion;
         select cats(field)
           into : _NUM_ separated by " "
         from sheet_&ds.
           where exists (select * from sheet_&ds. where FieldItem_field_type="num")
           and FieldItem_field_type="num";
-        *In case there is NOTHING found above, let "_NUM_" hold " " (NULL);
-        select " "
-          into : _NUM_ separated by " "
-        from sheet_&ds.
-          where not exists (select * from sheet_&ds. where FieldItem_field_type="num");
-        %let _NUM_=&_NUM_;
 
+        *In case there is NOTHING found, let "_DATE_" hold " " (NULL);
+        %let _DATE_='';
         *"_DATE_" holds "field" for date-format;
         select cats(field)
           into : _DATE_ separated by " "
         from sheet_&ds.
           where exists (select * from sheet_&ds. where FieldItem_field_type="date")
           and FieldItem_field_type="date";
-        *In case there is NOTHING found above, let "_DATE_" hold " " (NULL);
-        select " "
-          into : _DATE_ separated by " "
-        from sheet_&ds.
-          where not exists (select * from sheet_&ds. where FieldItem_field_type="date");
-        %let _DATE_=&_DATE_;
 
+        *In case there is NOTHING found, let "_FORM_" hold " " (NULL);
+        %let _FORM_='';
         *"_FORM_" holds "field FMTNAME" for format statement;
         select catx(" ", field, trim(FMTNAME) || '.')
           into : _FORM_ separated by " "
@@ -523,77 +503,52 @@ proc sort data=option_f; by Sheet_alias_name; run;
           where exists (select * from option_f where Sheet_alias_name="&ds.")
           and Sheet_alias_name="&ds."
           and FieldItem_field_type='num';
-        *In case there is NOTHING found above, let "_FORM_" hold " " (NULL);
-        select " "
-          into : _FORM_ separated by " "
-        from option_f
-          where not exists (select * from option_f where Sheet_alias_name="&ds."
-          and FieldItem_field_type='num');
-        %let _FORM_=&_FORM_;
 
+        *In case there is NOTHING found, let "_CTCAE_FLD_" hold " " (NULL);
+        %let _CTCAE_FLD_='';
         *"_CTCAE_FLD_" holds "field" for CTCAE conversion;
         select cats(field)
           into : _CTCAE_FLD_ separated by " "
         from sheet_&ds.
           where exists (select * from sheet_&ds. where FieldItem_field_type="ctcae")
           and FieldItem_field_type="ctcae";
-        *In case there is NOTHING found above, let "_CTCAE_FLD_" hold " " (NULL);
-        select " "
-          into : _CTCAE_FLD_ separated by " "
-        from sheet_&ds.
-          where not exists (select * from sheet_&ds. where FieldItem_field_type="ctcae");
-        %let _CTCAE_FLD_=&_CTCAE_FLD_;
-  
+
+        *In case there is NOTHING found, let "_CTCAE_KP1_" hold " " (NULL);
+        %let _CTCAE_KP1_='';
         *"_CTCAE_KP1_" holds "variable_trm" for keep statement;
         select cats(variable, '_trm')
           into : _CTCAE_KP1_ separated by " "
         from sheet_&ds.
           where exists (select * from sheet_&ds. where FieldItem_field_type="ctcae")
           and FieldItem_field_type="ctcae";
-        *In case there is NOTHING found above, let "_CTCAE_KP1_" hold " " (NULL);
-        select " "
-          into : _CTCAE_KP1_ separated by " "
-        from sheet_&ds.
-          where not exists (select * from sheet_&ds. where FieldItem_field_type="ctcae");
-        %let _CTCAE_KP1_=&_CTCAE_KP1_;
 
+        *In case there is NOTHING found, let "_CTCAE_KP2_" hold " " (NULL);
+        %let _CTCAE_KP2_='';
         *"_CTCAE_KP2_" holds "field" for keep statement;
         select cats(variable, '_grd')
           into : _CTCAE_KP2_ separated by " "
         from sheet_&ds.
           where exists (select * from sheet_&ds. where FieldItem_field_type="ctcae")
           and FieldItem_field_type="ctcae";
-        *In case there is NOTHING found above, let "_CTCAE_KP2_" hold " " (NULL);
-        select " "
-          into : _CTCAE_KP2_ separated by " "
-        from sheet_&ds.
-          where not exists (select * from sheet_&ds. where FieldItem_field_type="ctcae");
-        %let _CTCAE_KP2_=&_CTCAE_KP2_;
 
+        *In case there is NOTHING found, let "_CTCAE_LAB_" hold " " (NULL);
+        %let _CTCAE_LAB_='';
         *"_CTCAE_LAB_" holds "'FieldItem_label'" for label statement;
         select cats(quote(compress(FieldItem_label)))
           into : _CTCAE_LAB_ separated by " "
         from sheet_&ds.
           where FieldItem_field_type="ctcae";
-        *In case there is NOTHING found above, let "_CTCAE_LAB_" hold " " (NULL);
-        select " "
-          into : _CTCAE_LAB_ separated by " "
-        from sheet_&ds.
-          where not exists (select * from sheet_&ds. where FieldItem_field_type="ctcae");
-        %let _CTCAE_LAB_=&_CTCAE_LAB_;
 
+        *In case there is NOTHING found, let "_CTCAE_VAR_" hold " " (NULL);
+        %let _CTCAE_VAR_='';
         *"_CTCAE_VAR_" holds "variable" to rename CTCAE variables;
         select compress(variable)
           into : _CTCAE_VAR_ separated by " "
         from sheet_&ds.
           where FieldItem_field_type="ctcae";
-        *In case there is NOTHING found above, let "_CTCAE_VAR_" hold " " (NULL);
-        select " "
-          into : _CTCAE_VAR_ separated by " "
-        from sheet_&ds.
-          where not exists (select * from sheet_&ds. where FieldItem_field_type="ctcae");
-        %let _CTCAE_VAR_=&_CTCAE_VAR_;
 
+        *In case there is NOTHING found above, let "_CTCAE_FRM_" hold " " (NULL);
+        %let _CTCAE_FRM_='';
         *"_CTCAE_FRM_" holds "variable FMTNAME" for format statement;
         select catx(" ", compress(variable) || '_trm', trim(FMTNAME) || '.')
           into : _CTCAE_FRM_ separated by " "
@@ -601,12 +556,6 @@ proc sort data=option_f; by Sheet_alias_name; run;
           where exists (select * from option_f where Sheet_alias_name="&ds.")
           and Sheet_alias_name="&ds."
           and FieldItem_field_type='ctcae';
-        *In case there is NOTHING found above, let "_CTCAE_FRM_" hold " " (NULL);
-        select " "
-          into : _CTCAE_FRM_ separated by " "
-        from option_f
-          where not exists (select * from option_f where Sheet_alias_name="&ds." and FieldItem_field_type='ctcae');
-        %let _CTCAE_FRM_=&_CTCAE_FRM_;
         
     quit;
 
@@ -743,7 +692,6 @@ proc sort data=option_f; by Sheet_alias_name; run;
                     into : number_&i separated by " "
                   from xxx_&ds.;
               quit;
-              %put &&number_&i;
 
               *Assign 'TRUE' values to the relevant variables, depending on the flag variable;
               %do j=1 %to %sysfunc(countw(&&number_&i));
