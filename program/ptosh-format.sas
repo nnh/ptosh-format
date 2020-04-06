@@ -3,7 +3,7 @@ Program : ptosh-format.sas
 Purpose : Automatic Data Conversion of Ptosh-based Data to ADS
 Author : Kato Kiroku
 Published : 2019-05-28
-Version : 006.20.03.30
+Version : 007.20.04.06
 **************************************************************************;
 
 /*NOTES*/
@@ -110,24 +110,24 @@ run;
         by Sheet_alias_name;
     run;
 
-    *If duplicate variables are found, let "_WARNING_" hold the variable names;
+    *If duplicate variables are found, let "WarMessage" hold the variable names;
     proc sql noprint;
         select quote(strip(variable))
-          into : _WARNING_ separated by " "
+          into : WarMessage separated by " "
         from sheet_vcount
           where count>1;
         select " "
-          into : _WARNING_ separated by " "
+          into : WarMessage separated by " "
         from sheet_vcount
           where not exists (select * from sheet_vcount where count>1);
-        %let _WARNING_=&_WARNING_;
+        %let WarMessage=&WarMessage;
     quit;
 
     *Only when duplicate variables are found;
-    %if &_WARNING_ NE %then %do;
+    %if &WarMessage NE %then %do;
       data variable_duplicated;
           set sheet;
-          where variable in (&_WARNING_);
+          where variable in (&WarMessage);
       run;
       *Export a dataset about the duplicate variables;
       proc export data=variable_duplicated
@@ -135,7 +135,7 @@ run;
           dbms=csv replace;
       run;
       *Print warning to log;
-      %put WARNING: 変数名 &_WARNING_. は重複しています。変数名を変更してください。;
+      %put WARNING: 変数名 &WarMessage. は重複しています。変数名を変更してください。;
       *Stop the current step and any further procedures;
       %abort cancel;
     %end;
@@ -424,10 +424,20 @@ proc sort data=option_f; by Sheet_alias_name; run;
           where FieldItem_field_type='checkbox';
       run;
       proc sort data=chbox; by option_name; run;
+      proc sql;
+          create table ChboxCandidates as
+          select a.Option_name, a.variable, a.Sheet_alias_name, a.field, b.Option__Value_name, b.Option__Value_code, b.Option__Value_code_type
+          from option_from_sheet as a, option as b
+          where a.Option_name=b.Option_name;
+      quit;
+      proc sort data=ChboxCandidates sortseq=linguistic(Numeric_Collation=ON);
+          by Option__Value_code;
+      run;
+      proc sort data=ChboxCandidates;
+          by Option_name variable Sheet_alias_name;
+      run;
       data chbox_2;
-          merge chbox (in=a) option;
-          by option_name;
-          if a;
+          set ChboxCandidates;
           *Create new variables which show "TRUE" or "FALSE" conditions;
           new_var=cats(variable, '_', Option__Value_code);
       run;
@@ -453,7 +463,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
     proc sql noprint;
 
         *In case there is NOTHING found, let "_KEEP_" hold " " (NULL);
-        %let _KEEP_='';
+        %let _KEEP_=;
         *"_KEEP_" holds "field" for keep statement;
         select cats(field)
           into : _KEEP_ separated by " "
@@ -461,7 +471,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
           where FieldItem_field_type NE "ctcae";
 
         *In case there is NOTHING found, let "_LABEL_" hold " " (NULL);
-        %let _LABEL_='';
+        %let _LABEL_=;
         *"_LABEL_" holds "field='FieldItem_label'" for label statement;
         select catx("=", field, quote(compress(FieldItem_label)))
           into : _LABEL_ separated by " "
@@ -469,7 +479,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
           where FieldItem_field_type NE "ctcae";
 
         *In case there is NOTHING found, let "_RENAME_" hold " " (NULL);
-        %let _RENAME_='';
+        %let _RENAME_=;
         *"_RENAME_" holds "field=variable" for rename statement;
         select catx("=", field, compress(variable))
           into : _RENAME_ separated by " "
@@ -477,7 +487,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
           where FieldItem_field_type NE "ctcae";
 
         *In case there is NOTHING found, let "_NUM_" hold " " (NULL);
-        %let _NUM_='';
+        %let _NUM_=;
         *"_NUM_" holds "field" for numeric conversion;
         select cats(field)
           into : _NUM_ separated by " "
@@ -486,7 +496,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
           and FieldItem_field_type="num";
 
         *In case there is NOTHING found, let "_DATE_" hold " " (NULL);
-        %let _DATE_='';
+        %let _DATE_=;
         *"_DATE_" holds "field" for date-format;
         select cats(field)
           into : _DATE_ separated by " "
@@ -495,7 +505,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
           and FieldItem_field_type="date";
 
         *In case there is NOTHING found, let "_FORM_" hold " " (NULL);
-        %let _FORM_='';
+        %let _FORM_=;
         *"_FORM_" holds "field FMTNAME" for format statement;
         select catx(" ", field, trim(FMTNAME) || '.')
           into : _FORM_ separated by " "
@@ -505,7 +515,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
           and FieldItem_field_type='num';
 
         *In case there is NOTHING found, let "_CTCAE_FLD_" hold " " (NULL);
-        %let _CTCAE_FLD_='';
+        %let _CTCAE_FLD_=;
         *"_CTCAE_FLD_" holds "field" for CTCAE conversion;
         select cats(field)
           into : _CTCAE_FLD_ separated by " "
@@ -514,7 +524,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
           and FieldItem_field_type="ctcae";
 
         *In case there is NOTHING found, let "_CTCAE_KP1_" hold " " (NULL);
-        %let _CTCAE_KP1_='';
+        %let _CTCAE_KP1_=;
         *"_CTCAE_KP1_" holds "variable_trm" for keep statement;
         select cats(variable, '_trm')
           into : _CTCAE_KP1_ separated by " "
@@ -523,7 +533,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
           and FieldItem_field_type="ctcae";
 
         *In case there is NOTHING found, let "_CTCAE_KP2_" hold " " (NULL);
-        %let _CTCAE_KP2_='';
+        %let _CTCAE_KP2_=;
         *"_CTCAE_KP2_" holds "field" for keep statement;
         select cats(variable, '_grd')
           into : _CTCAE_KP2_ separated by " "
@@ -532,7 +542,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
           and FieldItem_field_type="ctcae";
 
         *In case there is NOTHING found, let "_CTCAE_LAB_" hold " " (NULL);
-        %let _CTCAE_LAB_='';
+        %let _CTCAE_LAB_=;
         *"_CTCAE_LAB_" holds "'FieldItem_label'" for label statement;
         select cats(quote(compress(FieldItem_label)))
           into : _CTCAE_LAB_ separated by " "
@@ -540,7 +550,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
           where FieldItem_field_type="ctcae";
 
         *In case there is NOTHING found, let "_CTCAE_VAR_" hold " " (NULL);
-        %let _CTCAE_VAR_='';
+        %let _CTCAE_VAR_=;
         *"_CTCAE_VAR_" holds "variable" to rename CTCAE variables;
         select compress(variable)
           into : _CTCAE_VAR_ separated by " "
@@ -548,7 +558,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
           where FieldItem_field_type="ctcae";
 
         *In case there is NOTHING found above, let "_CTCAE_FRM_" hold " " (NULL);
-        %let _CTCAE_FRM_='';
+        %let _CTCAE_FRM_=;
         *"_CTCAE_FRM_" holds "variable FMTNAME" for format statement;
         select catx(" ", compress(variable) || '_trm', trim(FMTNAME) || '.')
           into : _CTCAE_FRM_ separated by " "
@@ -624,8 +634,10 @@ proc sort data=option_f; by Sheet_alias_name; run;
     *Put FORMAT, KEEP, LABEL and RENAME statement;
     data xxx_&ds.;
         set &ds._2;
+        retain Var_Obs 0;
+        Var_Obs+1;
         format &_FORM_. &_CTCAE_FRM_.;
-        keep VAR9 &_KEEP_. &_CTCAE_KP1_. &_CTCAE_KP2_.;
+        keep VAR9 &_KEEP_. &_CTCAE_KP1_. &_CTCAE_KP2_. Var_Obs;
         label VAR9='症例登録番号' &_LABEL_.;
         rename VAR9=SUBJID &_RENAME_.;
     run;
@@ -699,12 +711,18 @@ proc sort data=option_f; by Sheet_alias_name; run;
                 %put &&ind_&j;
                 %if &&ind_&j NE 999 %then %do;
                   %do k=1 %to &&ind_&j;
+                    data _null_;
+                        set xxx_&ds.;                        
+                        if Var_Obs=&j then do;
+                            Var_ChBoxNum=scan(&v1, &k, ',');
+                            call symputx('ChBoxNum', Var_ChBoxNum);
+                        end;
+                    run;
                     data xxx_&ds.;
                         set xxx_&ds.;
-                        if comma_&i=&&ind_&j then do;
-                          array AR(*) &_ch_new_varlist_;
-                          AR(scan(&v1, &k, ','))='TRUE';
-                        end;
+                        if Var_Obs=&j then &v1._&ChBoxNum='TRUE';
+/*                          array AR(*) &_ch_new_varlist_;*/
+/*                          AR(scan(&v1, &k, ','))='TRUE';*/
                     run;
                   %end;
                 %end;
@@ -719,7 +737,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
                 set xxx_&ds.; 
                 *Assign labels to new variables;
                 label &_ch_lab_.;
-                drop n;
+                drop n Var_Obs;
                 %do i=1 %to %sysfunc(countw(&_var_));
                   drop comma_&i;
                 %end;
