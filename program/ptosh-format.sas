@@ -3,7 +3,7 @@ Program : ptosh-format.sas
 Purpose : Automatic Data Conversion of Ptosh-based Data to ADS
 Author : Kato Kiroku
 Published : 2019-05-28
-Version : 007.20.04.06
+Version : 008.20.05.01
 **************************************************************************;
 
 /*NOTES*/
@@ -64,6 +64,9 @@ libname libext "&cwd.\input\ext" access=readonly;
 libname libads "&cwd.\ptosh-format\ads";
 libname library "&cwd.\ptosh-format\ads";
 
+proc catalog cat=library.formats kill force;
+run;
+
 
 *------------------------------Sheets.csv and Options.csv------------------------------;
 
@@ -71,12 +74,12 @@ libname library "&cwd.\ptosh-format\ads";
 proc import datafile="&ext.\sheets.csv"
     out=sheet
     dbms=csv replace;
-    guessingrows=9999;
+    guessingrows=MAX;
 run;
 proc import datafile="&ext.\options.csv"
     out=option
     dbms=csv replace;
-    guessingrows=9999;
+    guessingrows=MAX;
 run;
 
 *Adjust the "Option_name" variable in both datasets to be the same length;
@@ -161,7 +164,7 @@ run;
       %let memcnt=%sysfunc(dnum(&did));
 
       %do i=1 %to &memcnt;
- 
+
         %let name=%qscan(%qsysfunc(dread(&did, &i)), -1, .);
 
         %if %qupcase(%qsysfunc(dread(&did, &i))) ne %qupcase(&name) %then %do;
@@ -363,9 +366,15 @@ data option_2;
     if first.option_name then do;
       i+1;
     end;
-    if Option__Value_code_type='num' then FMTNAME=catx('_', 'fmt', i, 'f');
-    else if Option__Value_code_type=' ' then FMTNAME=catx('_', '$fmt', i, 'f');
-    keep FMTNAME Option_name Option__Value_name Option__Value_code Option__Value_code_type;
+    if Option__Value_code_type='num' then do;
+      FMTNAME=catx('_', 'fmt', i, 'f');
+      TYPE='N';
+    end;
+    else if Option__Value_code_type in ('', 'char') then do;
+      FMTNAME=catx('_', '$fmt', i, 'f');
+      TYPE='C';
+    end;
+    keep FMTNAME Option_name Option__Value_name Option__Value_code Option__Value_code_type TYPE;
     rename Option__Value_code=START Option__Value_name=LABEL;
 run;
 proc format cntlin=option_2 library=library; run;
@@ -566,7 +575,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
           where exists (select * from option_f where Sheet_alias_name="&ds.")
           and Sheet_alias_name="&ds."
           and FieldItem_field_type='ctcae';
-        
+
     quit;
 
     *Display macro variables in log window (to check);
@@ -585,7 +594,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
 
     *Convert character variables specified above;
     %macro CONVERT_1 (varlist1, varlist2, varlist3, varlist4, varlist5);
-        
+
         *to NUMERIC;
         %local i v1;
         %if &varlist1 ne %then %do;
@@ -697,7 +706,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
                     AR(n)='FALSE';
                   end;
               run;
-    
+
               *'number_&i' holds 'comma_&i' to get checkbox variable values;
               proc sql noprint;
                   select cats(comma_&i)
@@ -712,7 +721,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
                 %if &&ind_&j NE 999 %then %do;
                   %do k=1 %to &&ind_&j;
                     data _null_;
-                        set xxx_&ds.;                        
+                        set xxx_&ds.;
                         if Var_Obs=&j then do;
                             Var_ChBoxNum=scan(&v1, &k, ',');
                             call symputx('ChBoxNum', Var_ChBoxNum);
@@ -734,7 +743,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
             *Drop the flag variable;
             data xxx_&ds.;
                 format SUBJID &_var_;
-                set xxx_&ds.; 
+                set xxx_&ds.;
                 *Assign labels to new variables;
                 label &_ch_lab_.;
                 drop n Var_Obs;
@@ -834,7 +843,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
         from to_combine;
     quit;
     %put &_DSLIST_;
-    
+
     *Create "ptdata" by merging the datasets;
     data ptdata;
         merge &_DSLIST_;
