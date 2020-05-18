@@ -3,7 +3,7 @@ Program : ptosh-format.sas
 Purpose : Automatic Data Conversion of Ptosh-based Data to ADS
 Author : Kato Kiroku
 Published : 2019-05-28
-Version : 008.20.05.01
+Version : 009.20.05.18
 **************************************************************************;
 
 /*NOTES*/
@@ -206,7 +206,7 @@ run;
               proc import datafile="&temp.\temp&cnt..csv"
                   out=temp&cnt
                   dbms=csv replace;
-                  guessingrows=999;
+                  guessingrows=MAX;
               run;
 
               *If there is an allocation data in the "RAW" directory, rename it to "group";
