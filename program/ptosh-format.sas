@@ -64,9 +64,6 @@ libname libext "&cwd.\input\ext" access=readonly;
 libname libads "&cwd.\ptosh-format\ads";
 libname library "&cwd.\ptosh-format\ads";
 
-proc catalog cat=library.formats kill force;
-run;
-
 
 *------------------------------Sheets.csv and Options.csv------------------------------;
 
