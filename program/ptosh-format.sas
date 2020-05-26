@@ -3,7 +3,7 @@ Program : ptosh-format.sas
 Purpose : Automatic Data Conversion of Ptosh-based Data to ADS
 Author : Kato Kiroku
 Published : 2019-05-28
-Version : 009.20.05.18
+Version : 010.20.05.26
 **************************************************************************;
 
 /*NOTES*/
@@ -412,17 +412,13 @@ proc sort data=option_f; by Sheet_alias_name; run;
     %global _DSLIST4CHB_;
 
     proc sql noprint;
+        *If there is NOTHING found, let "_DSLIST4CHB_" hold " " (NULL);
+        %let _DSLIST4CHB_=;
         *If "Checkbox"-typed variables are found, let "_DSLIST4CHB_" hold the datasets names;
         select cats(upcase(Sheet_alias_name))
           into : _DSLIST4CHB_ separated by " "
         from sheet
           where FieldItem_field_type="checkbox";
-        *If there is NOTHING found, let "_DSLIST4CHB_" hold " " (NULL);
-        select " "
-          into : _DSLIST4CHB_ separated by " "
-        from sheet
-          where not exists (select * from sheet where FieldItem_field_type="checkbox");
-        %let _DSLIST4CHB_=&_DSLIST4CHB_;
     quit;
     %put &_DSLIST4CHB_;
 
@@ -436,7 +432,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
       proc sql;
           create table ChboxCandidates as
           select a.Option_name, a.variable, a.Sheet_alias_name, a.field, b.Option__Value_name, b.Option__Value_code, b.Option__Value_code_type
-          from option_from_sheet as a, option as b
+          from chbox as a, option as b
           where a.Option_name=b.Option_name;
       quit;
       proc sort data=ChboxCandidates sortseq=linguistic(Numeric_Collation=ON);
