@@ -3,7 +3,7 @@ Program : ptosh-format.sas
 Purpose : Automatic Data Conversion of Ptosh-based Data to ADS
 Author : Kato Kiroku
 Published : 2019-05-28
-Version : 010.20.05.26
+Version : 011.20.06.05
 **************************************************************************;
 
 /*NOTES*/
@@ -774,19 +774,19 @@ proc sort data=option_f; by Sheet_alias_name; run;
           run;
         %end;
 
+        *Export the SAS datasets;
+        data libads.&ds; set xxx_&ds; run;
+        *Export them to CSV (Converting missing values to null);
+        options missing=' ';
+        %DS2CSV (data=xxx_&ds, runmode=b, csvfile=&ads.\&ds..csv, labels=N);
+        options missing='.';
+
         *Create new datasets to show contents of the datasets;
         data &ds._contents;
             set sashelp.vcolumn;
             where libname="LIBADS" and memname="%upcase(&ds.)";
             keep libname memname name type length label format informat;
         run;
-
-        *Export the datasets as SAS datasets;
-        data libads.&ds; set xxx_&ds; run;
-        *Export them to CSV (Converting missing values to null);
-        options missing=' ';
-        %DS2CSV (data=xxx_&ds, runmode=b, csvfile=&ads.\&ds..csv, labels=N);
-        options missing='.';
         *Export the "contents" dataset;
         proc export data=&ds._contents
             outfile="&ads.\&ds._contents.csv"
@@ -853,19 +853,19 @@ proc sort data=option_f; by Sheet_alias_name; run;
       run;
     %end;
 
+    *Export the SAS dataset;
+    data libads.ptdata; set ptdata; run;
+    *Export "ptdata" to CSV (Converting missing values to null);
+    options missing=' ';
+    %DS2CSV (data=ptdata, runmode=b, csvfile=&ads.\ptdata.csv, labels=N);
+    options missing='.';
+
     *Create new dataset to show contents of the dataset;
     data ptdata_contents;
         set sashelp.vcolumn;
         where libname="LIBADS" and memname="PTDATA";
         keep libname memname name type length label format informat;
     run;
-
-    *Export the dataset as SAS datasets;
-    data libads.ptdata; set ptdata; run;
-    *Export "ptdata" to CSV (Converting missing values to null);
-    options missing=' ';
-    %DS2CSV (data=ptdata, runmode=b, csvfile=&ads.\ptdata.csv, labels=N);
-    options missing='.';
     *Export the "contents" dataset;
     proc export data=ptdata_contents
         outfile="&ads.\ptdata_contents.csv"
