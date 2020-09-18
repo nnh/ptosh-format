@@ -44,7 +44,7 @@ OutputDF <- function(df, output_csv_path, output_rda_path){
   df_csv <- get(df)
   for (i in 1:ncol(df_csv)){
     # Output labels to csv
-    if (class(df_csv[ , i]) == "haven_labelled"){
+    if ("haven_labelled" %in% class(df_csv[ , i])){
       df_csv[ , i] <- to_character(df_csv[ , i])
     }
   }
@@ -240,4 +240,28 @@ SetAllocation <- function(allocation_csv, input_df){
   temp_colnames <- c(colnames(input_df), "group")
   colnames(output_df) <- temp_colnames
   return(output_df)
+}
+#' @title
+#' ConvertClass
+#' @description
+#' Convert to numeric or string
+#' @param
+#' df : vector
+#' @return
+#' converted vector
+ConvertClass <- function(convert_class, df){
+  numCheck <- NumericCheck(df)
+  if (("integer" %in% convert_class) && numCheck){
+    temp <- as.numeric(df)
+  } else {
+    temp <- as.character(df)
+  }
+  return(temp)
+}
+#' @title NumericCheck
+#' @param values : Vector of values to be tested
+#' @return Returns true if the value can be converted to a number, otherwise false
+NumericCheck <- function(values) {
+  value_converted_in_number <- sapply(values, function(x){temp <- suppressWarnings(as.numeric(x))})
+  return(!anyNA(value_converted_in_number))
 }
