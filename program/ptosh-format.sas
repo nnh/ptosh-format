@@ -3,7 +3,7 @@ Program : ptosh-format.sas
 Purpose : Automatic Data Conversion of Ptosh-based Data to ADS
 Author : Kato Kiroku
 Published : 2019-05-28
-Version : 011.20.06.05
+Version : 011.20.06.06
 **************************************************************************;
 
 /*NOTES*/
@@ -356,7 +356,7 @@ run;
 proc sort data=option; by option_name; run;
 
 *Create formats from the "Option" dataset;
-data option_2;
+data option_2_1;
     length FMTNAME $24.;
     set option;
     by option_name;
@@ -373,6 +373,17 @@ data option_2;
     end;
     keep FMTNAME Option_name Option__Value_name Option__Value_code Option__Value_code_type TYPE;
     rename Option__Value_code=START Option__Value_name=LABEL;
+run;
+*If the format is char type, output blank if no value is found;
+data option_2;
+    set option_2_1;
+    by option_name;
+    output;
+    if last.option_name && type='C' then do;
+      hlo='O';
+      label='';
+      output;
+    end;
 run;
 proc format cntlin=option_2 library=library; run;
 
@@ -514,7 +525,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
         from option_f
           where exists (select * from option_f where Sheet_alias_name="&ds.")
           and Sheet_alias_name="&ds."
-          and FieldItem_field_type='num';
+          and (FieldItem_field_type='num' or FieldItem_field_type='char');
 
         *In case there is NOTHING found, let "_CTCAE_FLD_" hold " " (NULL);
         %let _CTCAE_FLD_=;
