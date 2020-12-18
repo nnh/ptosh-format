@@ -1,6 +1,8 @@
 # Format Ptosh data for analysis program
 # Created date: 2018/12/19
+# Modification date: 2020/12/17
 # Author: mariko ohtsuka
+# Version: 1.0.0
 # library, function section ------
 if(!require("tidyr")){
   install.packages("tidyr")
