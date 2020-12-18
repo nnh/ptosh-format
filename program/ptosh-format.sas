@@ -1,9 +1,9 @@
 **************************************************************************
 Program : ptosh-format.sas
 Purpose : Automatic Data Conversion of Ptosh-based Data to ADS
-Author : Kato Kiroku
-Published : 2019-05-28
-Version : 011.20.06.05
+Author : Kato Kiroku, Mariko Ohtsuka
+Published : 2020-12-17
+Version : 1.0.0
 **************************************************************************;
 
 /*NOTES*/
@@ -636,8 +636,10 @@ proc sort data=option_f; by Sheet_alias_name; run;
     *Put FORMAT, KEEP, LABEL and RENAME statement;
     data xxx_&ds.;
         set &ds._2;
+        retain Var_Obs 0;
+        Var_Obs+1;
         format &_FORM_. &_CTCAE_FRM_.;
-        keep VAR9 &_KEEP_. &_CTCAE_KP1_. &_CTCAE_KP2_.;
+        keep VAR9 &_KEEP_. &_CTCAE_KP1_. &_CTCAE_KP2_. Var_Obs;
         label VAR9='è«ó·ìoò^î‘çÜ' &_LABEL_.;
         rename VAR9=SUBJID &_RENAME_.;
     run;
@@ -687,8 +689,6 @@ proc sort data=option_f; by Sheet_alias_name; run;
               data xxx_&ds.;
                   length &_ch_new_varlist_. $8;
                   set xxx_&ds.;
-                  retain Var_Obs 0;
-                  Var_Obs+1;
                   *If the varible has no values, set up a '999' flag;
                   comma_&i=countw(&v1. , ',');
                   if &v1.=' ' then comma_&i=999;
