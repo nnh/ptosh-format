@@ -1,6 +1,7 @@
 # ptosh-format
 Format Ptosh data for Analysis  
-Ptoshの出力RAWデータをSASデータセット（フォーマット付き）あるいはRデータセット（xxx付き）として任意の変数名を付けて再出力するRおよびSASプログラムです。  
+Ptoshの出力RAWデータをSASデータセットあるいはRデータセットとして任意の変数名を付けて再出力するRおよびSASプログラムです。  
+SASデータセットはフォーマット付き、RデータセットはSASにおけるフォーマットをhaven_labelledクラスのラベル付きベクトルで設定したものとなっています。  
 解析に必要なデータのみ解析しやすい形でのデータセット生成が簡単に出来ます。  
 <!-- [![MIT licensed][shield-license]](#)-->
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/nnh/ptosh-format/blob/master/LICENSE)
