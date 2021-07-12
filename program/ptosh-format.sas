@@ -856,9 +856,23 @@ proc sort data=option_f; by Sheet_alias_name; run;
     *Export the SAS dataset;
     data libads.ptdata; set ptdata; run;
     *Export "ptdata" to CSV (Converting missing values to null);
-    options missing=' ';
-    %DS2CSV (data=ptdata, runmode=b, csvfile=&ads.\ptdata.csv, labels=N);
-    options missing='.';
+    proc export data=work.ptdata
+        outfile="&ads.\ptdata2.csv"
+        dbms=csv replace;
+    run;
+    proc contents data=work.ptdata out=output_vars(keep=name varnum) noprint;
+    run;
+    proc sql noprint;
+        select quote(trim(name)) into: vars separated by ',' from output_vars
+        order by varnum;
+    quit;
+    %put &vars.;
+    data _NULL_;
+        file "&ads.\ptdata3.csv" dsd dlm=',';
+        set work.ptdata;
+        if _n_=1 then put %sysfunc(quote("&vars."));
+        put (_all_) (~);
+    run;
 
     *Create new dataset to show contents of the dataset;
     data ptdata_contents;
