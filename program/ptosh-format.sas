@@ -58,6 +58,7 @@ proc printto log="&cwd.\ptosh-format\log\ptosh-format.log" new; run;
 %let ads=&cwd.\ptosh-format\ads;
 %let create_temp_dir=%sysfunc(dcreate(temp, &cwd.\ptosh-format));
 %let temp=&cwd.\ptosh-format\temp;
+%let output_length=%eval(32767*3);
 
 libname libraw "&cwd.\input\rawdata" access=readonly;
 libname libext "&cwd.\input\ext" access=readonly;
@@ -856,23 +857,39 @@ proc sort data=option_f; by Sheet_alias_name; run;
     *Export the SAS dataset;
     data libads.ptdata; set ptdata; run;
     *Export "ptdata" to CSV (Converting missing values to null);
-    proc export data=work.ptdata
-        outfile="&ads.\ptdata2.csv"
-        dbms=csv replace;
-    run;
+    *Get columns infomation;
     proc contents data=work.ptdata out=output_vars(keep=name varnum) noprint;
     run;
     proc sql noprint;
-        select quote(trim(name)) into: vars separated by ',' from output_vars
+        select count(*) into:column_cnt from output_vars
+    quit;
+    proc sql noprint;
+        create table sort_vars as
+        select 0 as temp, *
+        from output_vars
         order by varnum;
     quit;
-    %put &vars.;
+    proc transpose data=sort_vars out=ds_vars;
+        by temp;
+        var name;
+        id name;
+    run;
+    data header;
+        set ds_vars;
+        drop temp _NAME_ _LABEL_;
+    run;
+    options missing=' ';
     data _NULL_;
-        file "&ads.\ptdata3.csv" dsd dlm=',';
-        set work.ptdata;
-        if _n_=1 then put %sysfunc(quote("&vars."));
+        file "&ads.\ptdata.csv" dsd dlm=',' lrecl=&output_length. stopover;
+        set header;
         put (_all_) (~);
     run;
+    data _NULL_;
+        file "&ads.\ptdata.csv" dsd dlm=',' lrecl=&output_length. mod stopover;
+        set work.ptdata;
+        put (_all_) (~);
+    run;
+    options missing='.';
 
     *Create new dataset to show contents of the dataset;
     data ptdata_contents;
