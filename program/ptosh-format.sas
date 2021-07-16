@@ -2,7 +2,7 @@
 Program : ptosh-format.sas
 Purpose : Automatic Data Conversion of Ptosh-based Data to ADS
 Author : Kato Kiroku, Mariko Ohtsuka
-Published : 2020-12-17
+Published : 2021-7-16
 Version : 1.0.0
 **************************************************************************;
 
@@ -776,10 +776,6 @@ proc sort data=option_f; by Sheet_alias_name; run;
 
         *Export the SAS datasets;
         data libads.&ds; set xxx_&ds; run;
-        *Export them to CSV (Converting missing values to null);
-        options missing=' ';
-        %DS2CSV (data=xxx_&ds, runmode=b, csvfile=&ads.\&ds..csv, labels=N);
-        options missing='.';
 
         *Create new datasets to show contents of the datasets;
         data &ds._contents;
@@ -855,10 +851,6 @@ proc sort data=option_f; by Sheet_alias_name; run;
 
     *Export the SAS dataset;
     data libads.ptdata; set ptdata; run;
-    *Export "ptdata" to CSV (Converting missing values to null);
-    options missing=' ';
-    %DS2CSV (data=ptdata, runmode=b, csvfile=&ads.\ptdata.csv, labels=N);
-    options missing='.';
 
     *Create new dataset to show contents of the dataset;
     data ptdata_contents;
