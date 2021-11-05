@@ -265,3 +265,31 @@ NumericCheck <- function(values) {
   value_converted_in_number <- sapply(values, function(x){temp <- suppressWarnings(as.numeric(x))})
   return(!anyNA(value_converted_in_number))
 }
+#' @title readCsvSetEncoding
+#' @description Reads a file with the specified encoding.
+#' @param target_file Full path of the target file.
+#' @param target_encoding Encoding to specify.
+#' @return Returns a data frame. If the file fails to read, NA is returned.
+readCsvSetEncoding <- function(target_file, target_encoding){
+  temp <- tryCatch(
+    read.csv(target_file, as.is=T, fileEncoding=target_encoding, stringsAsFactors=F, na.strings=""),
+    warning = function(e){ return(NA) }
+  )
+  return(temp)
+}
+#' @title readCsvFile
+#' @description Reads a file with the specified encoding.
+#' @param target_path The folder path where the target file resides.
+#' @param filename Target file name.
+#' @return Returns a data frame. If the file fails to read, NA is returned.
+readCsvFile <- function(target_path, filename){
+  target <- file.path(target_path, filename)
+  temp <- readCsvSetEncoding(target, 'utf-8')
+  if (is.na(temp)){
+    temp <- readCsvSetEncoding(target, 'cp932')
+  }
+  if (is.na(temp)){
+    temp <- readCsvSetEncoding(target, 'UTF-8-BOM')
+  }
+  return(temp)
+}
