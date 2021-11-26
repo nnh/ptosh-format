@@ -1,5 +1,6 @@
 # common function
 # Created date: 2019/3/28
+# Modification date: 2021/11/26
 # Author: mariko ohtsuka
 #' @title
 #' Exit function
@@ -284,12 +285,12 @@ readCsvSetEncoding <- function(target_file, target_encoding){
 #' @return Returns a data frame. If the file fails to read, NA is returned.
 readCsvFile <- function(target_path, filename){
   target <- file.path(target_path, filename)
-  temp <- readCsvSetEncoding(target, 'utf-8')
-  if (is.na(temp)){
-    temp <- readCsvSetEncoding(target, 'cp932')
+  temp <- readCsvSetEncoding(target, 'UTF-8-BOM')
+  if (!is.data.frame(temp)){
+    temp <- readCsvSetEncoding(target, 'utf-8')
   }
-  if (is.na(temp)){
-    temp <- readCsvSetEncoding(target, 'UTF-8-BOM')
+  if (!is.data.frame(temp)){
+    temp <- readCsvSetEncoding(target, 'cp932')
   }
   return(temp)
 }

@@ -1,6 +1,6 @@
 # Format Ptosh data for analysis program
 # Created date: 2018/12/19
-# Modification date: 2021/11/05
+# Modification date: 2021/11/26
 # Author: mariko ohtsuka
 # Version: 1.0.0
 # library, function section ------
