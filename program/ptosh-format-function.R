@@ -1,5 +1,6 @@
 # common function
 # Created date: 2019/3/28
+# Modification date: 2021/11/29
 # Author: mariko ohtsuka
 #' @title
 #' Exit function
@@ -31,16 +32,21 @@ CheckColname <- function(col_name, df){
   }
   return(res)
 }
-#' @title
-#' Output csv and R_dataframe
-#' @param
-#' df : dataframe name
-#' output_csv_path : output "*.csv" path
-#' output_rda_path : output "*.Rda" path
-#' @return
-#' No return value
+#' @title OutputDF
+#' @description Save r objects.
+#' @param df : dataframe name.
+#' @param output_csv_path : Currently unused.
+#' @param output_rda_path : output "*.Rda" path.
+#' @return No return value.
 OutputDF <- function(df, output_csv_path, output_rda_path){
-  # Output csv and R_dataframe
+  save(list=df, file=(paste0(output_rda_path, "/", df, ".Rda")))
+}
+#' @title OutputCsv
+#' @description Output csv files.
+#' @param df : dataframe name.
+#' @param output_csv_path : output "*.csv" path.
+#' @return No return value.
+OutputCsv <- function(df, output_csv_path){
   df_csv <- get(df)
   for (i in 1:ncol(df_csv)){
     # Output labels to csv
@@ -55,7 +61,6 @@ OutputDF <- function(df, output_csv_path, output_rda_path){
     write.csv(df_csv, paste0(output_csv_path, "/", df, ".csv"), na='""', row.names=F,
               fileEncoding=kOutput_csv_fileEncoding, eol=kOutput_csv_eol)
   }
-  save(list=df, file=(paste0(output_rda_path, "/", df, ".Rda")))
 }
 #' @title
 #' Split CTCAE term and grade by '-'
@@ -264,4 +269,32 @@ ConvertClass <- function(convert_class, df){
 NumericCheck <- function(values) {
   value_converted_in_number <- sapply(values, function(x){temp <- suppressWarnings(as.numeric(x))})
   return(!anyNA(value_converted_in_number))
+}
+#' @title ReadCsvSetEncoding
+#' @description Reads a file with the specified encoding.
+#' @param target_file Full path of the target file.
+#' @param target_encoding Encoding to specify.
+#' @return Returns a data frame. If the file fails to read, NA is returned.
+ReadCsvSetEncoding <- function(target_file, target_encoding){
+  temp <- tryCatch(
+    read.csv(target_file, as.is=T, fileEncoding=target_encoding, stringsAsFactors=F, na.strings=""),
+    warning = function(e){ return(NA) }
+  )
+  return(temp)
+}
+#' @title ReadCsvFile
+#' @description Reads a file with the specified encoding.
+#' @param target_path The folder path where the target file resides.
+#' @param filename Target file name.
+#' @return Returns a data frame. If the file fails to read, NA is returned.
+ReadCsvFile <- function(target_path, filename){
+  target <- file.path(target_path, filename)
+  temp <- ReadCsvSetEncoding(target, 'UTF-8-BOM')
+  if (!is.data.frame(temp)){
+    temp <- ReadCsvSetEncoding(target, 'utf-8')
+  }
+  if (!is.data.frame(temp)){
+    temp <- ReadCsvSetEncoding(target, 'cp932')
+  }
+  return(temp)
 }

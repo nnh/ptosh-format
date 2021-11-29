@@ -1,6 +1,6 @@
 # Format Ptosh data for analysis program
 # Created date: 2018/12/19
-# Modification date: 2020/12/17
+# Modification date: 2021/11/29
 # Author: mariko ohtsuka
 # Version: 1.0.0
 # library, function section ------
@@ -60,27 +60,10 @@ if (exists(kOutput_DF)) {
   rm(list=kOutput_DF)
 }
 # Input option.csv
-option_csv <- tryCatch(read.csv(file.path(ext_path, kOption_csv_name), as.is=T, fileEncoding="utf-8",
-                       stringsAsFactors=F, na.strings=""),
-                       warning = function(x){return(tryCatch(read.csv(file.path(ext_path, kOption_csv_name), as.is=T,
-                                                                      fileEncoding="cp932", stringsAsFactors=F,
-                                                                      na.strings=""),
-                                                             warning = function(x){return(
-                                                                         read.csv(file.path(ext_path, kOption_csv_name),
-                                                                                  as.is=T, fileEncoding="UTF-8-BOM",
-                                                                                  stringsAsFactors=F, na.strings=""))}))})
+option_csv <- ReadCsvFile(ext_path, kOption_csv_name)
 option_used <- NULL
 # Input sheet.csv, delete rows that 'variable' is NA
-sheet_csv <- tryCatch(read.csv(file.path(ext_path, kSheet_csv_name), as.is=T, fileEncoding="utf-8",
-                                stringsAsFactors=F, na.strings=""),
-                       warning = function(x){return(tryCatch(read.csv(file.path(ext_path, kSheet_csv_name), as.is=T,
-                                                                      fileEncoding="cp932", stringsAsFactors=F,
-                                                                      na.strings=""),
-                                                             warning = function(x){return(
-                                                                         read.csv(file.path(ext_path, kSheet_csv_name),
-                                                                                  as.is=T, fileEncoding="UTF-8-BOM",
-                                                                                  stringsAsFactors=F, na.strings=""))}))})
-
+sheet_csv <- ReadCsvFile(ext_path, kSheet_csv_name)
 sheet_csv <- subset(sheet_csv, !is.na(sheet_csv$variable) & !is.na(sheet_csv$FieldItem.label))
 unique_sheet_csv <- sheet_csv[!duplicated(sheet_csv["Sheet.alias_name"]), ]
 alias_name <- unique_sheet_csv$Sheet.alias_name
@@ -137,12 +120,11 @@ for (i in 1:length(alias_name)) {
     ptosh_input <- paste0("rawdata_", alias_name[i])
     ptosh_output <- alias_name[i]
     # ex. rawdata_ae <- read.csv(R-miniCHP_ae_181211_1841.csv)
-    assign(ptosh_input, read.csv(file.path(rawdata_path, file_list[file_index]), as.is=T, na.strings="",
-                                   fileEncoding="cp932"))
+    assign(ptosh_input, ReadCsvFile(rawdata_path, file_list[file_index]))
     # Select sheet_csv's rows if sheet_csv$Sheet.alias_name and ptosh_csv$alias_name is same value
     df_itemlist <- subset(sheet_csv, sheet_csv[ ,"Sheet.alias_name"] == alias_name[i])
     # Set dataset from ptosh_csv, sort by I column (Registration number)
-    sortlist <- order(get(ptosh_input)[kPtoshRegistrationNumberColumnIndex])
+    sortlist <- order(get(ptosh_input)[ ,kPtoshRegistrationNumberColumnIndex])
     sort_ptosh_input <- get(ptosh_input)[sortlist, ]
     # Extract the rows of "最終報告" is true if Sheet.category is "ae_report"
     if (sheet_category[i] == "ae_report") {
@@ -248,8 +230,10 @@ if (exists(kOutput_DF)) {
 # Output used option list
 output_option_csv <- subset(option_csv, Option.name %in% unique(option_used))
 OutputDF("output_option_csv", output_path, output_path)
+OutputCsv("output_option_csv", output_path)
 # Output variable name list
 output_sheet_csv <- sheet_csv[ ,c("Sheet.alias_name", "FieldItem.label", "variable")]
 OutputDF("output_sheet_csv", output_path, output_path)
+OutputCsv("output_sheet_csv", output_path)
 # Reset the log output destination
 sink()
