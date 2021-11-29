@@ -48,3 +48,22 @@ checkEqualsNumeric(is.numeric(r_ptdata$CA199), is.numeric(sas_ptdata$CA199)) %>%
 'CEA check' %>% print()
 checkEqualsNumeric(is.numeric(r_ptdata$CEA), is.numeric(sas_ptdata$CEA)) %>% print()
 checkEquals(r_ptdata, sas_ptdata)
+# Verify that duplicate variable names result in an error.
+#rm(list=ls())
+#library(tidyverse)
+#library(here)
+#library(RUnit)
+#source(file.path(here(), "program", "ptosh-format-function.R"))
+#input_dir <- 'C:/Users/Mariko/Downloads/input/ext'
+#test_sheet_csv <- ReadCsvFile(input_dir, 'sheets.csv')
+#for (i in 1:nrow(test_sheet_csv)){
+#  if (test_sheet_csv[i, 'Sheet.alias_name'] == 'registration' && test_sheet_csv[i, 'FieldItem.name.tr..field......'] == 8){
+#    test_sheet_csv[i, 'variable'] <- 'RFICDTC'
+#  }
+#}
+#sheets <- test_sheet_csv
+#file.rename(str_c(input_dir, '/', 'sheets.csv'), str_c(input_dir, '/', 'save_sheets.csv'))
+#OutputCsv('sheets', input_dir)
+#rm(list=ls())
+#source(here('program', 'ptosh-format.R'), encoding='utf-8')
+#file.rename(str_c(input_dir, '/', 'save_sheets.csv'), str_c(input_dir, '/', 'sheets.csv'))

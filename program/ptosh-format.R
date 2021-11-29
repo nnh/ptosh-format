@@ -1,6 +1,6 @@
 # Format Ptosh data for analysis program
 # Created date: 2018/12/19
-# Modification date: 2021/11/26
+# Modification date: 2021/11/29
 # Author: mariko ohtsuka
 # Version: 1.0.0
 # library, function section ------
@@ -230,8 +230,10 @@ if (exists(kOutput_DF)) {
 # Output used option list
 output_option_csv <- subset(option_csv, Option.name %in% unique(option_used))
 OutputDF("output_option_csv", output_path, output_path)
+OutputCsv("output_option_csv", output_path)
 # Output variable name list
 output_sheet_csv <- sheet_csv[ ,c("Sheet.alias_name", "FieldItem.label", "variable")]
 OutputDF("output_sheet_csv", output_path, output_path)
+OutputCsv("output_sheet_csv", output_path)
 # Reset the log output destination
 sink()
