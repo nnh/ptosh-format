@@ -60,10 +60,10 @@ if (exists(kOutput_DF)) {
   rm(list=kOutput_DF)
 }
 # Input option.csv
-option_csv <- readCsvFile(ext_path, kOption_csv_name)
+option_csv <- ReadCsvFile(ext_path, kOption_csv_name)
 option_used <- NULL
 # Input sheet.csv, delete rows that 'variable' is NA
-sheet_csv <- readCsvFile(ext_path, kSheet_csv_name)
+sheet_csv <- ReadCsvFile(ext_path, kSheet_csv_name)
 sheet_csv <- subset(sheet_csv, !is.na(sheet_csv$variable) & !is.na(sheet_csv$FieldItem.label))
 unique_sheet_csv <- sheet_csv[!duplicated(sheet_csv["Sheet.alias_name"]), ]
 alias_name <- unique_sheet_csv$Sheet.alias_name
@@ -120,7 +120,7 @@ for (i in 1:length(alias_name)) {
     ptosh_input <- paste0("rawdata_", alias_name[i])
     ptosh_output <- alias_name[i]
     # ex. rawdata_ae <- read.csv(R-miniCHP_ae_181211_1841.csv)
-    assign(ptosh_input, readCsvFile(rawdata_path, file_list[file_index]))
+    assign(ptosh_input, ReadCsvFile(rawdata_path, file_list[file_index]))
     # Select sheet_csv's rows if sheet_csv$Sheet.alias_name and ptosh_csv$alias_name is same value
     df_itemlist <- subset(sheet_csv, sheet_csv[ ,"Sheet.alias_name"] == alias_name[i])
     # Set dataset from ptosh_csv, sort by I column (Registration number)
