@@ -1,6 +1,6 @@
 # common function
 # Created date: 2019/3/28
-# Modification date: 2021/11/29
+# Modification date: 2024/9/25
 # Author: mariko ohtsuka
 #' @title
 #' Exit function
@@ -238,7 +238,7 @@ CreateDataFrame <- function(col_names, row_count=0){
 SetAllocation <- function(allocation_csv, input_df){
   allocation_key <- colnames(allocation_csv)[kAllocationSubjidColumnIndex]
   # Sort input_df by subjid
-  sort_input_df <- input_df[order(input_df[kRegistration_colname]), ]
+  sort_input_df <- input_df[order(input_df[[kRegistration_colname]]), ]
   # Merge by subjid
   output_df <- merge(sort_input_df, allocation_csv, by.x=kRegistration_colname, by.y=allocation_key, all.x=T)
   # Change column name

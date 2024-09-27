@@ -65,3 +65,7 @@ packrat/lib*/
 /R/ADS/
 /R/LOG/
 /ads_bef/
+/sas_ads*/
+/program/execPtosh-format.sas
+/r_ads*/
+/program/execPtosh-format.r

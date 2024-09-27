@@ -1,6 +1,6 @@
 # Format Ptosh data for analysis program
 # Created date: 2018/12/19
-# Modification date: 2021/11/29
+# Modification date: 2024/9/25
 # Author: mariko ohtsuka
 # Version: 1.0.0
 # library, function section ------
@@ -40,6 +40,7 @@ ConstAssign("kSheet_csv_name", "sheets.csv")
 ConstAssign("kOption_csv_name", "options.csv")
 ConstAssign("kAllocationSubjidColumnIndex", 1)
 ConstAssign("kAllocationAllocationColumnIndex", 2)
+ConstAssign("kRawDataFoot", "_[0-9]{6}_[0-9]{4}.csv")
 if (Sys.info()[["sysname"]] == "Windows") {
   temp_delimiter <- "/"
 } else {
@@ -92,7 +93,7 @@ if (nrow(df_duplicated) != 0) {
 file_list <- list.files(rawdata_path)
 # Get trial name
 # Replace ex.) "xxx_ae_20190301_1122.csv" -> "xxx_ae"
-temp_file_list <- gsub("_[0-9]{6}_[0-9]{4}.csv", "", file_list)
+temp_file_list <- gsub(kRawDataFoot, "", file_list)
 # Replace ex.) "xxx_ae" -> "xxx"
 gsub_alias_name <- paste0("_", alias_name)
 gsub_alias_name <- paste(gsub_alias_name, collapse="|")
@@ -104,17 +105,17 @@ trial_name <- row.names(temp_trial_name)
 # If there are multiple matches, try all
 # read allocation
 for (i in 1:length(trial_name)) {
-  file_index <- grep(paste0("^allocation_" , trial_name[i], "_[0-9]{6}_[0-9]{4}.csv"), file_list)
+  file_index <- grep(paste0("^allocation_" , trial_name[i], kRawDataFoot), file_list)
   if (length(file_index) == 1) {
-    allocation_csv <- read.csv(file.path(rawdata_path, file_list[file_index]), as.is=T, na.strings="", fileEncoding="cp932")
+    allocation_csv <- read.csv(file.path(rawdata_path, file_list[file_index]), as.is=T, na.strings="", fileEncoding="UTF-8-BOM")
     # sort subjid
-    allocation_csv <- allocation_csv[order(allocation_csv[kAllocationSubjidColumnIndex]), ]
+    allocation_csv <- allocation_csv[order(allocation_csv[[kAllocationSubjidColumnIndex]]), ]
     break()
   }
 }
 for (i in 1:length(alias_name)) {
   temp_var_labels <- "症例登録番号"
-  file_index <- grep(paste0(trial_name, "_", alias_name[i] , "_"), file_list)
+  file_index <- grep(paste0(trial_name, "_", alias_name[i], kRawDataFoot), file_list)
   # If the csv file does not exist, skip and output warning
   if (length(file_index) > 0) {
     ptosh_input <- paste0("rawdata_", alias_name[i])
@@ -186,8 +187,14 @@ for (i in 1:length(alias_name)) {
               temp_labels <- ConvertClass(class(temp_ptosh_output[,temp_factor_colname]),
                                           temp_factor[,"Option..Value.code"])
               names(temp_labels) <- temp_factor["Option..Value.name"][[1]]
-              temp_ptosh_output[ , temp_factor_colname] <- labelled(temp_ptosh_output[ , temp_factor_colname],
-                                                                    temp_labels)
+              if (is.numeric(temp_ptosh_output[ , temp_factor_colname])) {
+                temp_labels_values <- as.numeric(temp_labels)
+                temp_ptosh_output[ , temp_factor_colname] <- labelled(temp_ptosh_output[ , temp_factor_colname], 
+                                            setNames(temp_labels_values, names(temp_labels)))
+              } else {
+                # 数値型でない場合は現行の処理を行う
+                temp_ptosh_output[ , temp_factor_colname] <- labelled(temp_ptosh_output[ , temp_factor_colname], temp_labels)
+              }
             }
             option_used <- c(option_used, temp_factor["Option.name"], recursive=T)
           }
