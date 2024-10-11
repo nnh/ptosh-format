@@ -56,10 +56,13 @@ OutputCsv <- function(df, output_csv_path){
   }
   if (Sys.info()[["sysname"]] == "Windows") {
     write.csv(df_csv, paste0(output_csv_path, "/", df, ".csv"), na='""', row.names=F,
-              fileEncoding=kOutput_csv_fileEncoding)
+              fileEncoding="utf-8")
+    con <- file(paste0(output_csv_path, "/", df, ".csv"), open = "r+b", encoding = "UTF-8")
+    writeBin(charToRaw("\xEF\xBB\xBF"), con) # BOM
+    close(con)
   } else {
     write.csv(df_csv, paste0(output_csv_path, "/", df, ".csv"), na='""', row.names=F,
-              fileEncoding=kOutput_csv_fileEncoding, eol=kOutput_csv_eol)
+              fileEncoding="cp932", eol=kOutput_csv_eol)
   }
 }
 #' @title
