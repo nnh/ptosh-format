@@ -2,8 +2,8 @@
 Program : ptosh-format.sas
 Purpose : Automatic Data Conversion of Ptosh-based Data to ADS
 Author : Kato Kiroku, Mariko Ohtsuka
-Published : 2021-7-16
-Version : 1.0.0
+Published : 2024-10-15
+Version : 1.0.1
 **************************************************************************;
 
 /*NOTES*/
@@ -324,9 +324,9 @@ data _NULL_;
     if last.Sheet_alias_name then call symputx('TOTAL', i);
 run;
 
-%macro SPLIT;
+%macro SPLIT();
 
-    %global subj total;
+    %global subj;
     %do i=1 %to &TOTAL;
       data sheet_&&SUBJ&i;
           set sheet;
@@ -348,7 +348,7 @@ run;
 
 %mend SPLIT;
 
-%SPLIT;
+%SPLIT();
 
 
 *------------------------------Format------------------------------;
@@ -628,14 +628,14 @@ proc sort data=option_f; by Sheet_alias_name; run;
 
     %mend CONVERT_1;
 
-    data &ds._2;
+    data &ds._dmy;
         set &ds.;
         %CONVERT_1 (&_NUM_., &_DATE_., &_CTCAE_FLD_., &_CTCAE_LAB_., &_CTCAE_VAR_.);
     run;
 
     *Put FORMAT, KEEP, LABEL and RENAME statement;
     data xxx_&ds.;
-        set &ds._2;
+        set &ds._dmy;
         retain Var_Obs 0;
         Var_Obs+1;
         format &_FORM_. &_CTCAE_FRM_.;
