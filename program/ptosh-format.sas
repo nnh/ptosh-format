@@ -2,7 +2,7 @@
 Program : ptosh-format.sas
 Purpose : Automatic Data Conversion of Ptosh-based Data to ADS
 Author : Kato Kiroku, Mariko Ohtsuka
-Published : 2024-10-15
+Published : 2024-10-16
 Version : 1.0.1
 **************************************************************************;
 
@@ -20,7 +20,32 @@ proc datasets library=work kill nolist; quit;
 dm log 'clear';
 
 options mprint mlogic symbolgen minoperator;
+%macro delete_var_if_exists(varname);
+    %if %symglobl(&varname) %then %do;
+        %symdel &varname;
+        %put &varname was deleted.;
+    %end;
+    %else %do;
+        %put &varname does not exist.;
+    %end;
+%mend;
+%macro delete_all_global_vars();
+    proc sql noprint;
+        select name
+        into :varlist separated by ' '
+        from dictionary.macros
+        where scope = 'GLOBAL' 
+          and name not in ('SYSENV', 'SYSSCP', 'SYSSCPL')
+          and substr(name, 1, 4) ne 'SYS_';  /* 'SYS_'で始まる自動マクロ変数を除外 */
+    quit;
 
+    %let count = %sysfunc(countw(&varlist));
+    %do i = 1 %to &count;
+        %let varname = %scan(&varlist, &i);
+        %delete_var_if_exists(&varname);
+    %end;
+%mend;
+%delete_all_global_vars;
 
 *------------------------------Current Working Directories------------------------------;
 
@@ -569,6 +594,15 @@ proc sort data=option_f; by Sheet_alias_name; run;
           and Sheet_alias_name="&ds."
           and FieldItem_field_type='ctcae';
 
+        %let _FORM_CHAR_=;
+        select catx(" ", field, trim(FMTNAME) || '.')
+          into : _FORM_CHAR_ separated by " "
+        from option_f
+          where exists (select * from option_f where Sheet_alias_name="&ds.")
+          and Sheet_alias_name="&ds."
+          and FieldItem_field_type='char';
+
+
     quit;
 
     *Display macro variables in log window (to check);
@@ -584,6 +618,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
     %put &_CTCAE_LAB_.;
     %put &_CTCAE_VAR_.;
     %put &_CTCAE_FRM_.;
+    %put &_FORM_CHAR_.;
 
     *Convert character variables specified above;
     %macro CONVERT_1 (varlist1, varlist2, varlist3, varlist4, varlist5);
@@ -638,7 +673,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
         set &ds._dmy;
         retain Var_Obs 0;
         Var_Obs+1;
-        format &_FORM_. &_CTCAE_FRM_.;
+        format &_FORM_. &_CTCAE_FRM_. &_FORM_CHAR_.;
         keep VAR9 &_KEEP_. &_CTCAE_KP1_. &_CTCAE_KP2_. Var_Obs;
         label VAR9='症例登録番号' &_LABEL_.;
         rename VAR9=SUBJID &_RENAME_.;
