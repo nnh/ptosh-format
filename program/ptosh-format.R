@@ -1,60 +1,14 @@
 # Format Ptosh data for analysis program
 # Created date: 2018/12/19
-# Modification date: 2024/9/30
+# Modification date: 2024/10/16
 # Author: mariko ohtsuka
 # Version: 1.0.0
-# library, function section ------
-if(!require("tidyr")){
-  install.packages("tidyr")
-  library("tidyr")
-}
 if(!require("here")){
   install.packages("here")
   library("here")
 }
-if(!require("labelled")){
-  install.packages("labelled")
-  library("labelled")
-}
-Sys.setenv("TZ" = "Asia/Tokyo")
-# Output log ------
-# log output path
-log_path <- file.path(here(), "log")
-if (file.exists(log_path) == F) {
-  dir.create(log_path)
-}
-sink(file.path(log_path, "log.txt"), split=T)
 # Function section ------
 source(file.path(here(), "program", "ptosh-format-function.R"))
-# Constant section ------
-ConstAssign("kPtoshRegistrationNumberColumnIndex", 9)  # ptosh_csv$registration_number
-# If the MedDRA code is set in the field, set 0, else set 1
-ConstAssign("kCtcae_convertflag", 0)
-ConstAssign("kRegistration_colname", "SUBJID")
-ConstAssign("kOption_ctcae", "ctcae")
-ConstAssign("kOutput_DF", "ptdata")
-ConstAssign("kMerge_excluded_sheet_category", c("ae_report", "committees_opinion", "multiple"))
-ConstAssign("kOutput_csv_eol", "\r\n")  # output_csv's line feed code
-ConstAssign("kSheet_csv_name", "sheets.csv")
-ConstAssign("kOption_csv_name", "options.csv")
-ConstAssign("kAllocationSubjidColumnIndex", 1)
-ConstAssign("kAllocationAllocationColumnIndex", 2)
-ConstAssign("kRawDataFoot", "_[0-9]{6}_[0-9]{4}.csv")
-if (Sys.info()[["sysname"]] == "Windows") {
-  temp_delimiter <- "/"
-} else {
-  temp_delimiter <- "/"
-}
-ConstAssign("kDelimiter", temp_delimiter)
-temp_parent_path <- strsplit(here(), kDelimiter)
-parent_path <- paste(unlist(temp_parent_path)[2:lengths(temp_parent_path) - 1], collapse=temp_delimiter)
-input_path <- file.path(parent_path, "input")
-ext_path <- file.path(input_path, "ext")
-rawdata_path <- file.path(input_path, "rawdata", sep=temp_delimiter)
-output_path <- file.path(here(), "ads")
-if (file.exists(output_path) == F) {
-  dir.create(output_path)
-}
 # Initialize ------
 if (exists(kOutput_DF)) {
   rm(list=kOutput_DF)
