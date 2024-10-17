@@ -1,6 +1,6 @@
 # common function
 # Created date: 2019/3/28
-# Modification date: 2024/10/16
+# Modification date: 2024/10/17
 # Author: mariko ohtsuka
 #' @title
 #' Exit function
@@ -410,6 +410,63 @@ EditOptionValue <- function(target_item, ptosh_output, ctcae_term_colname) {
     }
   }
   option_used <<- c(option_used, temp_factor["Option.name"], recursive=T)
+  return(ptosh_output)
+}
+OutputMergeExcludedSheet <- function(aliasName) {
+  if (exists("allocation_csv")) {
+    temp <- SetAllocation(allocation_csv, get(aliasName))
+  } else {
+    temp <- get(aliasName)
+  }
+  assign(aliasName, temp, envir=.GlobalEnv)
+  OutputDF(aliasName, output_path, output_path)
+}
+CreatePtdata <- function(aliasName) {
+  temp_merge_df <- data.frame(id = get(aliasName)[ , kRegistration_colname])
+  colnames(temp_merge_df) <- kRegistration_colname
+  return(temp_merge_df)  
+}
+EditOutputDf <- function(aliasName) {
+  file_index <- GetFileIndex(aliasName)
+  ptosh_input <- GetPtoshInput(aliasName, file_index)
+  # Create data frame with registration number only
+  ptosh_output <- data.frame(id = ptosh_input[kPtoshRegistrationNumberColumnIndex])
+  colnames(ptosh_output) <- kRegistration_colname
+  df_itemlist <- subset(sheet_csv, sheet_csv[ ,"Sheet.alias_name"] == aliasName)
+  output_df <- NULL
+  for (i in 1:nrow(df_itemlist)) {
+    # Skip if there is no column with that name
+    temp_ptosh_output <- EditOutputDfItems(df_itemlist[i, ], ptosh_input, ptosh_output)
+    if (i == 1) {
+      output_df <- temp_ptosh_output
+    } else {
+      temp_ptosh_output_modified <- temp_ptosh_output[, !names(temp_ptosh_output) %in% kRegistration_colname, drop=F]
+      output_df <- output_df %>% cbind(temp_ptosh_output_modified)
+    }
+  }
+  return(output_df)
+}
+EditOutputDfItems <- function(target_item, ptosh_input, ptosh_output) {
+  target_column_name <- paste0("field", target_item[ , "FieldItem.name.tr..field......", drop=T])
+  target_column_index <- CheckColname(target_column_name, ptosh_input)
+  if (target_column_index == 0) {
+    return()
+  }
+  temp_var_labels <- "症例登録番号"
+  
+  temp <- EditCtcae(target_item, temp_var_labels, ptosh_input, target_column_index, ptosh_output)
+  ctcae_term_colname <- temp$ctcae_term_colname
+  ptosh_output <- temp$ptosh_output
+  temp_var_labels <- temp$temp_var_labels
+  
+  temp <- EditCheckBox(ptosh_input, target_item, temp_var_labels, ptosh_output)
+  target_item[ , "Option.name"] <- temp$option_name
+  temp_var_labels <- temp$temp_var_labels
+  ptosh_output <- temp$ptosh_output
+  
+  ptosh_output <- EditOptionValue(target_item, ptosh_output, ctcae_term_colname)
+  
+  var_label(ptosh_output) <- temp_var_labels
   return(ptosh_output)
 }
 

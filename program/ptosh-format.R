@@ -1,6 +1,6 @@
 # Format Ptosh data for analysis program
 # Created date: 2018/12/19
-# Modification date: 2024/10/16
+# Modification date: 2024/10/17
 # Author: mariko ohtsuka
 # Version: 1.0.0
 if(!require("here")){
@@ -67,68 +67,9 @@ for (i in 1:length(trial_name)) {
   }
 }
 
-TEST20241016_2 <- function(target_item, ptosh_input, ptosh_output) {
-  target_column_name <- paste0("field", target_item[ , "FieldItem.name.tr..field......", drop=T])
-  target_column_index <- CheckColname(target_column_name, ptosh_input)
-  if (target_column_index == 0) {
-    return()
-  }
-  temp_var_labels <- "症例登録番号"
-
-  temp <- EditCtcae(target_item, temp_var_labels, ptosh_input, target_column_index, ptosh_output)
-  ctcae_term_colname <- temp$ctcae_term_colname
-  ptosh_output <- temp$ptosh_output
-  temp_var_labels <- temp$temp_var_labels
-
-  temp <- EditCheckBox(ptosh_input, target_item, temp_var_labels, ptosh_output)
-  target_item[ , "Option.name"] <- temp$option_name
-  temp_var_labels <- temp$temp_var_labels
-  ptosh_output <- temp$ptosh_output
-  
-  ptosh_output <- EditOptionValue(target_item, ptosh_output, ctcae_term_colname)
-
-  var_label(ptosh_output) <- temp_var_labels
-  return(ptosh_output)
-}
-TEST20241016 <- function(aliasName) {
-  file_index <- GetFileIndex(aliasName)
-  ptosh_input <- GetPtoshInput(aliasName, file_index)
-  # Create data frame with registration number only
-  ptosh_output <- data.frame(id = ptosh_input[kPtoshRegistrationNumberColumnIndex])
-  colnames(ptosh_output) <- kRegistration_colname
-  df_itemlist <- subset(sheet_csv, sheet_csv[ ,"Sheet.alias_name"] == aliasName)
-  output_df <- NULL
-  for (j in 1:nrow(df_itemlist)) {
-    # Skip if there is no column with that name
-    temp_ptosh_output <- TEST20241016_2(df_itemlist[j, ], ptosh_input, ptosh_output)
-    if (j == 1) {
-      output_df <- temp_ptosh_output
-    } else {
-      output_df <- output_df %>% inner_join(temp_ptosh_output, by="SUBJID", relationship="many-to-many")
-    }
-  }
-  assign(aliasName, output_df, envir=globalenv())
-}
-
 for (i in 1:length(alias_name)) {
-  TEST20241016(alias_name[i])
-}
-OutputMergeExcludedSheet <- function(aliasName) {
-  if (exists("allocation_csv")) {
-    temp <- SetAllocation(allocation_csv, get(aliasName))
-  } else {
-    temp <- get(aliasName)
-  }
-  assign(aliasName, temp)
-  OutputDF(aliasName, output_path, output_path)
-}
-CreatePtdata <- function(aliasName) {
-  temp_merge_df <- data.frame(id = get(aliasName)[ , kRegistration_colname])
-  colnames(temp_merge_df) <- kRegistration_colname
-  return(temp_merge_df)  
-}
-for (i in 1:length(alias_name)) {
-  # Edit output dataframe
+  temp <- EditOutputDf(alias_name[i])
+  assign(alias_name[i], temp, envir=.GlobalEnv)
   if (sheet_category[i] %in% kMerge_excluded_sheet_category) {
     OutputMergeExcludedSheet(alias_name[i])
   } else {
@@ -141,6 +82,7 @@ for (i in 1:length(alias_name)) {
     var_label(ptdata) <- temp_var_labels
   }
 }
+
 # Output merge dataframe
 if (exists(kOutput_DF)) {
   if (exists("allocation_csv")) {
