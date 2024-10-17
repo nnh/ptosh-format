@@ -362,10 +362,11 @@ EditCtcae <- function(target_item, temp_var_labels, ptosh_input, target_column_i
   temp_ptosh_output <- cbind(ptosh_output, temp_cbind_column)
   return(list(ctcae_term_colname=ctcae_term_colname, ptosh_output=temp_ptosh_output, temp_var_labels=temp_var_labels))
 }
-EditCheckBox <- function(ptosh_input, target_item, temp_var_labels, ptosh_output) {
+EditCheckBox <- function(ptosh_input, target_item, temp_var_labels, ptosh_output, target_column_name) {
   fieldType <- target_item[, "FieldItem.field_type", drop=T]
+  column_name <- target_item[ , "variable", drop=T]
   if (fieldType == "checkbox" && !is.na(fieldType)) {
-    checkboxcolumns_list <- CreateCheckboxColumns(sort_ptosh_input, target_item, target_column_name, column_name)
+    checkboxcolumns_list <- CreateCheckboxColumns(ptosh_input, target_item, target_column_name, column_name)
     temp_cbind_column <- checkboxcolumns_list[[1]]
     temp_var_labels <- c(temp_var_labels, checkboxcolumns_list[[2]])
     ptosh_output <- cbind(ptosh_output, temp_cbind_column)
@@ -437,11 +438,13 @@ EditOutputDf <- function(aliasName) {
   for (i in 1:nrow(df_itemlist)) {
     # Skip if there is no column with that name
     temp_ptosh_output <- EditOutputDfItems(df_itemlist[i, ], ptosh_input, ptosh_output)
-    if (i == 1) {
-      output_df <- temp_ptosh_output
-    } else {
-      temp_ptosh_output_modified <- temp_ptosh_output[, !names(temp_ptosh_output) %in% kRegistration_colname, drop=F]
-      output_df <- output_df %>% cbind(temp_ptosh_output_modified)
+    if (!is.null(temp_ptosh_output)) {
+      if (is.null(output_df)) {
+        output_df <- temp_ptosh_output
+      } else {
+        temp_ptosh_output_modified <- temp_ptosh_output[, !names(temp_ptosh_output) %in% kRegistration_colname, drop=F]
+        output_df <- output_df %>% cbind(temp_ptosh_output_modified)
+      }
     }
   }
   return(output_df)
@@ -449,8 +452,8 @@ EditOutputDf <- function(aliasName) {
 EditOutputDfItems <- function(target_item, ptosh_input, ptosh_output) {
   target_column_name <- paste0("field", target_item[ , "FieldItem.name.tr..field......", drop=T])
   target_column_index <- CheckColname(target_column_name, ptosh_input)
-  if (target_column_index == 0) {
-    return()
+  if (target_column_index < 0) {
+    return(NULL)
   }
   temp_var_labels <- "症例登録番号"
   
@@ -459,7 +462,7 @@ EditOutputDfItems <- function(target_item, ptosh_input, ptosh_output) {
   ptosh_output <- temp$ptosh_output
   temp_var_labels <- temp$temp_var_labels
   
-  temp <- EditCheckBox(ptosh_input, target_item, temp_var_labels, ptosh_output)
+  temp <- EditCheckBox(ptosh_input, target_item, temp_var_labels, ptosh_output, target_column_name)
   target_item[ , "Option.name"] <- temp$option_name
   temp_var_labels <- temp$temp_var_labels
   ptosh_output <- temp$ptosh_output
