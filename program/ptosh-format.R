@@ -66,116 +66,79 @@ for (i in 1:length(trial_name)) {
     break()
   }
 }
-for (i in 1:length(alias_name)) {
+
+TEST20241016_2 <- function(target_item, ptosh_input, ptosh_output) {
+  target_column_name <- paste0("field", target_item[ , "FieldItem.name.tr..field......", drop=T])
+  target_column_index <- CheckColname(target_column_name, ptosh_input)
+  if (target_column_index == 0) {
+    return()
+  }
   temp_var_labels <- "症例登録番号"
-  file_index <- grep(paste0(trial_name, "_", alias_name[i], kRawDataFoot), file_list)
-  # If the csv file does not exist, skip and output warning
-  if (length(file_index) > 0) {
-    ptosh_input <- paste0("rawdata_", alias_name[i])
-    ptosh_output <- alias_name[i]
-    # ex. rawdata_ae <- read.csv(R-miniCHP_ae_181211_1841.csv)
-    assign(ptosh_input, ReadCsvFile(rawdata_path, file_list[file_index]))
-    # Select sheet_csv's rows if sheet_csv$Sheet.alias_name and ptosh_csv$alias_name is same value
-    df_itemlist <- subset(sheet_csv, sheet_csv[ ,"Sheet.alias_name"] == alias_name[i])
-    # Set dataset from ptosh_csv, sort by I column (Registration number)
-    sortlist <- order(get(ptosh_input)[ ,kPtoshRegistrationNumberColumnIndex])
-    sort_ptosh_input <- get(ptosh_input)[sortlist, ]
-    # Extract the rows of "最終報告" is true if Sheet.category is "ae_report"
-    if (sheet_category[i] == "ae_report") {
-      sort_ptosh_input <- subset(sort_ptosh_input, sort_ptosh_input[ ,"最終報告"] == "true")
-    }
-    # Create data frame with registration number only
-    temp_ptosh_output <- data.frame(id = sort_ptosh_input[kPtoshRegistrationNumberColumnIndex])
-    colnames(temp_ptosh_output) <- kRegistration_colname
-    for (j in 1:nrow(df_itemlist)) {
-      # Get column name from the value of sheet_csv$variable
-      column_name <- df_itemlist[j, "variable"]
-      # Skip if there is no column with that name
-      target_column_name <- paste0("field", df_itemlist[j, "FieldItem.name.tr..field......"])
-      target_column_index <- CheckColname(target_column_name, sort_ptosh_input)
-      if (target_column_index > 0) {
-        if ((df_itemlist[j, "FieldItem.field_type"] == kOption_ctcae)
-            && !is.na(df_itemlist[j, "FieldItem.field_type"])) {
-          ctcae_term_colname <- paste0(column_name, "_trm")
-          ctcae_grade_colname <- paste0(column_name, "_grd")
-          temp_var_labels <- c(temp_var_labels, paste0(df_itemlist[j, "FieldItem.label"], "有害事象名"),
-                               paste0(df_itemlist[j, "FieldItem.label"], "グレード"))
-          temp_cbind_column <- SplitCtcae(sort_ptosh_input, target_column_index, ctcae_term_colname, ctcae_grade_colname)
-        } else {
-          temp_cbind_column <- sort_ptosh_input[target_column_index]
-          # Convert from character to date if field type is date
-          if (df_itemlist[j, "FieldItem.field_type"] == "date") {
-            temp_cbind_column[1] <- as.Date(apply(temp_cbind_column, 1, as.character))
-          }
-          colnames(temp_cbind_column) <- column_name
-          temp_var_labels <- c(temp_var_labels, df_itemlist[j, "FieldItem.label"])
-        }
-        temp_ptosh_output <- cbind(temp_ptosh_output, temp_cbind_column)
-        # Checkbox
-        if ((df_itemlist[j, "FieldItem.field_type"] == "checkbox")
-            && !is.na(df_itemlist[j, "FieldItem.field_type"])) {
-          checkboxcolumns_list <- CreateCheckboxColumns(sort_ptosh_input, df_itemlist[j, ], target_column_name)
-          temp_cbind_column <- checkboxcolumns_list[[1]]
-          temp_var_labels <- c(temp_var_labels, checkboxcolumns_list[[2]])
-          temp_ptosh_output <- cbind(temp_ptosh_output, temp_cbind_column)
-          df_itemlist[j, "Option.name"] <- NA
-        }
-        # Set option value
-        if (!is.na(df_itemlist[j, "Option.name"]) | (df_itemlist[j, "FieldItem.field_type"] == kOption_ctcae)) {
-          if (df_itemlist[j, "FieldItem.field_type"] == kOption_ctcae) {
-            temp_factor_option_name <- "CTCAE"
-          } else {
-            temp_factor_option_name <- df_itemlist[j, "Option.name"]
-          }
-          temp_factor <- ExtractOptionCsv(temp_factor_option_name)
-          if (nrow(temp_factor) > 0) {
-            if ((df_itemlist[j, "FieldItem.field_type"] == kOption_ctcae)
-                && !is.na(df_itemlist[j, "FieldItem.field_type"])) {
-              temp_factor_colname <- ctcae_term_colname
-            } else {
-              temp_factor_colname <- column_name
-            }
-            factor_data <- temp_ptosh_output[ , temp_factor_colname]
-            if (!all(is.na(temp_ptosh_output[ , temp_factor_colname]))) {
-              temp_labels <- ConvertClass(class(temp_ptosh_output[,temp_factor_colname]),
-                                          temp_factor[,"Option..Value.code"])
-              names(temp_labels) <- temp_factor["Option..Value.name"][[1]]
-              if (is.numeric(temp_ptosh_output[ , temp_factor_colname])) {
-                temp_labels_values <- as.numeric(temp_labels)
-                temp_ptosh_output[ , temp_factor_colname] <- labelled(temp_ptosh_output[ , temp_factor_colname], 
-                                            setNames(temp_labels_values, names(temp_labels)))
-              } else {
-                # 数値型でない場合は現行の処理を行う
-                temp_ptosh_output[ , temp_factor_colname] <- labelled(temp_ptosh_output[ , temp_factor_colname], temp_labels)
-              }
-            }
-            option_used <- c(option_used, temp_factor["Option.name"], recursive=T)
-          }
-        }
-      }
-      var_label(temp_ptosh_output) <- temp_var_labels
-      assign(ptosh_output, temp_ptosh_output)
-    }
-    # Edit output dataframe
-    if (sheet_category[i] %in% kMerge_excluded_sheet_category) {
-      if (exists("allocation_csv")) {
-        assign(ptosh_output, SetAllocation(allocation_csv, get(ptosh_output)))
-      }
-      OutputDF(ptosh_output, output_path, output_path)
+
+  temp <- EditCtcae(target_item, temp_var_labels, ptosh_input, target_column_index, ptosh_output)
+  ctcae_term_colname <- temp$ctcae_term_colname
+  ptosh_output <- temp$ptosh_output
+  temp_var_labels <- temp$temp_var_labels
+
+  temp <- EditCheckBox(ptosh_input, target_item, temp_var_labels, ptosh_output)
+  target_item[ , "Option.name"] <- temp$option_name
+  temp_var_labels <- temp$temp_var_labels
+  ptosh_output <- temp$ptosh_output
+  
+  ptosh_output <- EditOptionValue(target_item, ptosh_output, ctcae_term_colname)
+
+  var_label(ptosh_output) <- temp_var_labels
+  return(ptosh_output)
+}
+TEST20241016 <- function(aliasName) {
+  file_index <- GetFileIndex(aliasName)
+  ptosh_input <- GetPtoshInput(aliasName, file_index)
+  # Create data frame with registration number only
+  ptosh_output <- data.frame(id = ptosh_input[kPtoshRegistrationNumberColumnIndex])
+  colnames(ptosh_output) <- kRegistration_colname
+  df_itemlist <- subset(sheet_csv, sheet_csv[ ,"Sheet.alias_name"] == aliasName)
+  output_df <- NULL
+  for (j in 1:nrow(df_itemlist)) {
+    # Skip if there is no column with that name
+    temp_ptosh_output <- TEST20241016_2(df_itemlist[j, ], ptosh_input, ptosh_output)
+    if (j == 1) {
+      output_df <- temp_ptosh_output
     } else {
-      # Merge
-      if (!exists(kOutput_DF)) {
-        temp_merge_df <- data.frame(id = get(ptosh_output)[ , kRegistration_colname])
-        colnames(temp_merge_df) <- kRegistration_colname
-        assign(kOutput_DF, temp_merge_df)
-      }
-      temp_var_labels <- c(unlist(var_label(get(kOutput_DF))), unlist(var_label(get(ptosh_output)))[-1])
-      assign(kOutput_DF, merge(get(kOutput_DF), get(ptosh_output), by=kRegistration_colname, all=T))
-      var_label(ptdata) <- temp_var_labels
+      output_df <- output_df %>% inner_join(temp_ptosh_output, by="SUBJID", relationship="many-to-many")
     }
+  }
+  assign(aliasName, output_df, envir=globalenv())
+}
+
+for (i in 1:length(alias_name)) {
+  TEST20241016(alias_name[i])
+}
+OutputMergeExcludedSheet <- function(aliasName) {
+  if (exists("allocation_csv")) {
+    temp <- SetAllocation(allocation_csv, get(aliasName))
   } else {
-    stop(paste0("No input data", " : ", alias_name[i]))
-    Exit()
+    temp <- get(aliasName)
+  }
+  assign(aliasName, temp)
+  OutputDF(aliasName, output_path, output_path)
+}
+CreatePtdata <- function(aliasName) {
+  temp_merge_df <- data.frame(id = get(aliasName)[ , kRegistration_colname])
+  colnames(temp_merge_df) <- kRegistration_colname
+  return(temp_merge_df)  
+}
+for (i in 1:length(alias_name)) {
+  # Edit output dataframe
+  if (sheet_category[i] %in% kMerge_excluded_sheet_category) {
+    OutputMergeExcludedSheet(alias_name[i])
+  } else {
+    # Merge
+    if (!exists(kOutput_DF)) {
+      assign(kOutput_DF, CreatePtdata(alias_name[i]))
+    }
+    temp_var_labels <- c(unlist(var_label(get(kOutput_DF))), unlist(var_label(get(alias_name[i])))[-1])
+    assign(kOutput_DF, merge(get(kOutput_DF), get(alias_name[i]), by=kRegistration_colname, all=T))
+    var_label(ptdata) <- temp_var_labels
   }
 }
 # Output merge dataframe

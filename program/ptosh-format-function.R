@@ -152,7 +152,7 @@ SplitCtcae <- function(df, column_index, term_colname, grade_colname){
 #' 3     |T     |F     |T
 #' * return[2] vector
 #' c("B症状_1", "B症状_3", "B症状_5")
-CreateCheckboxColumns <- function(ptosh_input, sheet_csv, ptosh_column_name){
+CreateCheckboxColumns <- function(ptosh_input, sheet_csv, ptosh_column_name, column_name){
   option_csv <- ExtractOptionCsv(sheet_csv$Option.name)
   # Create dataframe of number of checkboxes column
   checkbox_df <- data.frame(matrix(rep(F), ncol=nrow(option_csv), nrow=nrow(ptosh_input)))
@@ -319,6 +319,100 @@ ReadCsvFile <- function(target_path, filename){
   }
   return(temp)
 }
+GetFileIndex <- function(aliasName) {
+  file_index <- grep(paste0(trial_name, "_", aliasName, kRawDataFoot), file_list)
+  if (length(file_index) > 0) {
+    return(file_index)
+  } else {
+    stop(paste0("No input data", " : ", aliasName))
+  }
+}
+GetPtoshInput <- function(aliasName, file_index) {
+  ptosh_input <- paste0("rawdata_", aliasName)
+  # ex. rawdata_ae <- read.csv(R-miniCHP_ae_181211_1841.csv)
+  assign(ptosh_input, ReadCsvFile(rawdata_path, file_list[file_index]))
+  sortlist <- order(get(ptosh_input)[ ,kPtoshRegistrationNumberColumnIndex])
+  sort_ptosh_input <- get(ptosh_input)[sortlist, ]
+  # Extract the rows of "最終報告" is true if Sheet.category is "ae_report"
+  if (sheet_category[i] == "ae_report") {
+    sort_ptosh_input <- subset(sort_ptosh_input, sort_ptosh_input[ ,"最終報告"] == "true")
+  }
+  return(sort_ptosh_input)
+}
+EditCtcae <- function(target_item, temp_var_labels, ptosh_input, target_column_index, ptosh_output) {
+  column_name <- target_item[ , "variable", drop=T]
+  fieldType <- target_item[, "FieldItem.field_type", drop=T]
+  itemLabel <- target_item[, "FieldItem.label", drop=T]
+  ctcae_term_colname <- NA
+  if (fieldType == kOption_ctcae && !is.na(fieldType)) {
+    ctcae_term_colname <- paste0(column_name, "_trm")
+    ctcae_grade_colname <- paste0(column_name, "_grd")
+    temp_var_labels <- c(temp_var_labels, paste0(itemLabel, "有害事象名"),
+                         paste0(itemLabel, "グレード"))
+    temp_cbind_column <- SplitCtcae(ptosh_input, target_column_index, ctcae_term_colname, ctcae_grade_colname)
+  } else {
+    temp_cbind_column <- ptosh_input[target_column_index]
+    # Convert from character to date if field type is date
+    if (fieldType == "date") {
+      temp_cbind_column[1] <- as.Date(apply(temp_cbind_column, 1, as.character))
+    }
+    colnames(temp_cbind_column) <- column_name
+    temp_var_labels <- c(temp_var_labels, itemLabel)
+  }
+  temp_ptosh_output <- cbind(ptosh_output, temp_cbind_column)
+  return(list(ctcae_term_colname=ctcae_term_colname, ptosh_output=temp_ptosh_output, temp_var_labels=temp_var_labels))
+}
+EditCheckBox <- function(ptosh_input, target_item, temp_var_labels, ptosh_output) {
+  fieldType <- target_item[, "FieldItem.field_type", drop=T]
+  if (fieldType == "checkbox" && !is.na(fieldType)) {
+    checkboxcolumns_list <- CreateCheckboxColumns(sort_ptosh_input, target_item, target_column_name, column_name)
+    temp_cbind_column <- checkboxcolumns_list[[1]]
+    temp_var_labels <- c(temp_var_labels, checkboxcolumns_list[[2]])
+    ptosh_output <- cbind(ptosh_output, temp_cbind_column)
+    option_name <- NA
+  } else {
+    option_name <- target_item[ , "Option.name", drop=T]
+  }
+  return(list(temp_var_labels=temp_var_labels, ptosh_output=ptosh_output, option_name=option_name))
+}
+EditOptionValue <- function(target_item, ptosh_output, ctcae_term_colname) {
+  optionName <- target_item[ , "Option.name", drop=T]
+  fieldType <- target_item[, "FieldItem.field_type", drop=T]
+  column_name <- target_item[ , "variable", drop=T]
+  # Set option value
+  if (is.na(optionName) && fieldType != kOption_ctcae) {
+    return(ptosh_output)
+  }
+  if (fieldType == kOption_ctcae) {
+    temp_factor_option_name <- "CTCAE"
+  } else {
+    temp_factor_option_name <- optionName
+  }
+  temp_factor <- ExtractOptionCsv(temp_factor_option_name)
+  if (nrow(temp_factor) == 0) {
+    return()
+  }
+  if (fieldType == kOption_ctcae && !is.na(fieldType)) {
+    temp_factor_colname <- ctcae_term_colname
+  } else {
+    temp_factor_colname <- column_name
+  }
+  factor_data <- ptosh_output[ , temp_factor_colname]
+  if (!all(is.na(factor_data))) {
+    temp_labels <- ConvertClass(class(ptosh_output[,temp_factor_colname]), temp_factor[,"Option..Value.code"])
+    names(temp_labels) <- temp_factor["Option..Value.name"][[1]]
+    if (is.numeric(ptosh_output[ , temp_factor_colname])) {
+      temp_labels_values <- as.numeric(temp_labels)
+      ptosh_output[ , temp_factor_colname] <- labelled(ptosh_output[ , temp_factor_colname], setNames(temp_labels_values, names(temp_labels)))
+    } else {
+      # 数値型でない場合は現行の処理を行う
+      ptosh_output[ , temp_factor_colname] <- labelled(ptosh_output[ , temp_factor_colname], temp_labels)
+    }
+  }
+  option_used <<- c(option_used, temp_factor["Option.name"], recursive=T)
+  return(ptosh_output)
+}
+
 # Constant section ------
 ConstAssign("kPtoshRegistrationNumberColumnIndex", 9)  # ptosh_csv$registration_number
 # If the MedDRA code is set in the field, set 0, else set 1
