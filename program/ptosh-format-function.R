@@ -296,9 +296,9 @@ NumericCheck <- function(values) {
 #' @param target_file Full path of the target file.
 #' @param target_encoding Encoding to specify.
 #' @return Returns a data frame. If the file fails to read, NA is returned.
-ReadCsvSetEncoding <- function(target_file, target_encoding){
+ReadCsvSetEncoding <- function(target_file, target_encoding, colClassesList){
   temp <- tryCatch(
-    read.csv(target_file, as.is=T, fileEncoding=target_encoding, stringsAsFactors=F, na.strings=""),
+    read.csv(target_file, as.is=T, fileEncoding=target_encoding, stringsAsFactors=F, na.strings="", colClasses=colClassesList),
     warning = function(e){ return(NA) }
   )
   return(temp)
@@ -308,14 +308,14 @@ ReadCsvSetEncoding <- function(target_file, target_encoding){
 #' @param target_path The folder path where the target file resides.
 #' @param filename Target file name.
 #' @return Returns a data frame. If the file fails to read, NA is returned.
-ReadCsvFile <- function(target_path, filename){
+ReadCsvFile <- function(target_path, filename, colClassesList=NA){
   target <- file.path(target_path, filename)
-  temp <- ReadCsvSetEncoding(target, 'UTF-8-BOM')
+  temp <- ReadCsvSetEncoding(target, 'UTF-8-BOM', colClassesList)
   if (!is.data.frame(temp)){
-    temp <- ReadCsvSetEncoding(target, 'utf-8')
+    temp <- ReadCsvSetEncoding(target, 'utf-8', colClassesList)
   }
   if (!is.data.frame(temp)){
-    temp <- ReadCsvSetEncoding(target, 'cp932')
+    temp <- ReadCsvSetEncoding(target, 'cp932', colClassesList)
   }
   return(temp)
 }
@@ -327,10 +327,23 @@ GetFileIndex <- function(aliasName) {
     stop(paste0("No input data", " : ", aliasName))
   }
 }
+GetSheetCsvForRawData <- function(aliasName) {
+  target <- sheet_csv[sheet_csv$Sheet.alias_name == aliasName, c("FieldItem.name.tr..field......", "FieldItem.field_type")]
+  target$colClass <- ifelse(target$FieldItem.field_type == "char", "character", NA)
+  target <- target[!is.na(target$colClass), ]
+  if (nrow(target) == 0) {
+    return(NA)
+  }
+  targetNames <- paste0("field", target$FieldItem.name.tr..field......)
+  res <- target$colClass
+  names(res) <- targetNames
+  return(res)
+}
 GetPtoshInput <- function(aliasName, file_index) {
+  colClassesList <- GetSheetCsvForRawData(aliasName)
   ptosh_input <- paste0("rawdata_", aliasName)
   # ex. rawdata_ae <- read.csv(R-miniCHP_ae_181211_1841.csv)
-  assign(ptosh_input, ReadCsvFile(rawdata_path, file_list[file_index]))
+  assign(ptosh_input, ReadCsvFile(rawdata_path, file_list[file_index], colClassesList))
   sortlist <- order(get(ptosh_input)[ ,kPtoshRegistrationNumberColumnIndex])
   sort_ptosh_input <- get(ptosh_input)[sortlist, ]
   # Extract the rows of "最終報告" is true if Sheet.category is "ae_report"
