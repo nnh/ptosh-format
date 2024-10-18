@@ -366,7 +366,7 @@ EditCtcae <- function(target_item, temp_var_labels, ptosh_input, target_column_i
   } else {
     temp_cbind_column <- ptosh_input[target_column_index]
     # Convert from character to date if field type is date
-    if (fieldType == "date") {
+    if (fieldType == "date" && !is.na(fieldType)) {
       temp_cbind_column[1] <- as.Date(apply(temp_cbind_column, 1, as.character))
     }
     colnames(temp_cbind_column) <- column_name
@@ -394,19 +394,19 @@ EditOptionValue <- function(target_item, ptosh_output, ctcae_term_colname) {
   fieldType <- target_item[, "FieldItem.field_type", drop=T]
   column_name <- target_item[ , "variable", drop=T]
   # Set option value
-  if (is.na(optionName) && fieldType != kOption_ctcae) {
+  if (is.na(optionName) && !is.na(fieldType) && fieldType != kOption_ctcae) {
     return(ptosh_output)
   }
-  if (fieldType == kOption_ctcae) {
+  if (!is.na(fieldType) && fieldType == kOption_ctcae) {
     temp_factor_option_name <- "CTCAE"
   } else {
     temp_factor_option_name <- optionName
   }
   temp_factor <- ExtractOptionCsv(temp_factor_option_name)
   if (nrow(temp_factor) == 0) {
-    return()
+    return(ptosh_output)
   }
-  if (fieldType == kOption_ctcae && !is.na(fieldType)) {
+  if (!is.na(fieldType) && fieldType == kOption_ctcae) {
     temp_factor_colname <- ctcae_term_colname
   } else {
     temp_factor_colname <- column_name

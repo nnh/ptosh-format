@@ -60,7 +60,7 @@ trial_name <- row.names(temp_trial_name)
 for (i in 1:length(trial_name)) {
   file_index <- grep(paste0("^allocation_" , trial_name[i], kRawDataFoot), file_list)
   if (length(file_index) == 1) {
-    allocation_csv <- read.csv(file.path(rawdata_path, file_list[file_index]), as.is=T, na.strings="", fileEncoding="UTF-8-BOM")
+    allocation_csv <- ReadCsvFile(rawdata_path, file_list[file_index], NA)
     # sort subjid
     allocation_csv <- allocation_csv[order(allocation_csv[[kAllocationSubjidColumnIndex]]), ]
     break()
