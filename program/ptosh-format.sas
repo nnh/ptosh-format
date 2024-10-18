@@ -357,7 +357,7 @@ run;
           set sheet;
           by Sheet_category;
           where Sheet_alias_name="&&SUBJ&i";
-          if FieldItem_field_type=' ' then delete;
+          *if FieldItem_field_type=' ' then delete;
       run;
       *Create "label_" datasets which do NOT have full-width characters;
       *RSN : Unable to assign variable labels with full-width symbols like "Åi";
