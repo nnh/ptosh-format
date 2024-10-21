@@ -67,20 +67,15 @@ for (i in 1:length(trial_name)) {
   }
 }
 
+assign(kOutput_DF, NULL)
 for (i in 1:length(alias_name)) {
   temp <- EditOutputDf(alias_name[i])
   assign(alias_name[i], temp, envir=.GlobalEnv)
-  if (is.null(temp)) {
-  } else if (sheet_category[i] %in% kMerge_excluded_sheet_category) {
-    OutputMergeExcludedSheet(alias_name[i])
-  } else {
-    # Merge
-    if (!exists(kOutput_DF)) {
-      assign(kOutput_DF, CreatePtdata(alias_name[i]))
+  if (!is.null(temp)) {
+    res <- MergeData(alias_name[i], sheet_category[i], get(kOutput_DF))
+    if (!is.null(res)) {
+      assign(kOutput_DF, res, envir=.GlobalEnv)
     }
-    temp_var_labels <- c(unlist(var_label(get(kOutput_DF))), unlist(var_label(get(alias_name[i])))[-1])
-    assign(kOutput_DF, merge(get(kOutput_DF), get(alias_name[i]), by=kRegistration_colname, all=T))
-    var_label(ptdata) <- temp_var_labels
   }
 }
 

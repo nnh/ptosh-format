@@ -496,6 +496,21 @@ EditOutputDfItems <- function(target_item, ptosh_input, ptosh_output) {
   return(ptosh_output)
 }
 
+MergeData <- function(aliasName, sheetCategory, ptdata) {
+  if (sheetCategory %in% kMerge_excluded_sheet_category) {
+    OutputMergeExcludedSheet(aliasName)
+    return(NULL)
+  } else {
+    # Merge
+    if (is.null(get(kOutput_DF))) {
+      ptdata <- CreatePtdata(aliasName)
+    }
+    temp_var_labels <- c(unlist(var_label(ptdata)), unlist(var_label(get(aliasName)))[-1])
+    temp_merge <- merge(ptdata, get(aliasName), by=kRegistration_colname, all=T)
+    var_label(temp_merge) <- temp_var_labels
+    return(temp_merge)
+  }
+}
 # Constant section ------
 ConstAssign("kPtoshRegistrationNumberColumnIndex", 9)  # ptosh_csv$registration_number
 # If the MedDRA code is set in the field, set 0, else set 1
