@@ -444,8 +444,18 @@ EditOutputDf <- function(aliasName) {
   file_index <- GetFileIndex(aliasName)
   ptosh_input <- GetPtoshInput(aliasName, file_index)
   # Create data frame with registration number only
-  ptosh_output <- data.frame(id = ptosh_input[kPtoshRegistrationNumberColumnIndex])
-  colnames(ptosh_output) <- kRegistration_colname
+  temp_ptosh_output <- data.frame(id = ptosh_input[kPtoshRegistrationNumberColumnIndex])
+  colnames(temp_ptosh_output) <- kRegistration_colname
+  # Records with case registration number NA are excluded from processing.
+  ptosh_output <- temp_ptosh_output[!is.na(temp_ptosh_output[ , kRegistration_colname]), , drop=F]
+  if (nrow(ptosh_output) == 0) {
+    if (nrow(temp_ptosh_output) > 0) {
+      print(paste0("Warning: All case registration numbers are blank. The process will be skipped. target:", aliasName))
+    }  
+    return(NULL)
+  } else {
+    rm(temp_ptosh_output)
+  }
   df_itemlist <- subset(sheet_csv, sheet_csv[ ,"Sheet.alias_name"] == aliasName)
   output_df <- NULL
   for (i in 1:nrow(df_itemlist)) {

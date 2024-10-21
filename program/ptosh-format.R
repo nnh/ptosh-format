@@ -1,8 +1,8 @@
 # Format Ptosh data for analysis program
 # Created date: 2018/12/19
-# Modification date: 2024/10/17
+# Modification date: 2024/10/21
 # Author: mariko ohtsuka
-# Version: 1.0.0
+# Version: 1.0.1
 if(!require("here")){
   install.packages("here")
   library("here")
@@ -70,7 +70,8 @@ for (i in 1:length(trial_name)) {
 for (i in 1:length(alias_name)) {
   temp <- EditOutputDf(alias_name[i])
   assign(alias_name[i], temp, envir=.GlobalEnv)
-  if (sheet_category[i] %in% kMerge_excluded_sheet_category) {
+  if (is.null(temp)) {
+  } else if (sheet_category[i] %in% kMerge_excluded_sheet_category) {
     OutputMergeExcludedSheet(alias_name[i])
   } else {
     # Merge
