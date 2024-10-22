@@ -2,7 +2,7 @@
 Program : ptosh-format.sas
 Purpose : Automatic Data Conversion of Ptosh-based Data to ADS
 Author : Kato Kiroku, Mariko Ohtsuka
-Published : 2024-10-16
+Published : 2024-10-22
 Version : 1.0.1
 **************************************************************************;
 
@@ -38,6 +38,9 @@ options mprint mlogic symbolgen minoperator;
           and name not in ('SYSENV', 'SYSSCP', 'SYSSCPL')
           and substr(name, 1, 4) ne 'SYS_';  /* 'SYS_'で始まる自動マクロ変数を除外 */
     quit;
+	%if %symexist(VARLIST) = 0 %then %do;
+        %return;
+    %end;
 
     %let count = %sysfunc(countw(&varlist));
     %do i = 1 %to &count;
@@ -479,8 +482,84 @@ proc sort data=option_f; by Sheet_alias_name; run;
 
 %put &_DSLIST4CHB_;
 
+%macro CONVERT_SUBJID_TO_STRING(ds);
 
+    /* Get the type of VAR9 */
+    proc contents data=&ds. out=contents(keep=name type) noprint;
+    run;
+
+    /* Check the type of VAR9 */
+    data _null_;
+        set contents;
+        if name = 'VAR9' then call symputx('vartype', type);
+    run;
+
+    /* Convert only if VAR9 is numeric */
+    %if &vartype = 1 %then %do; /* 1 indicates numeric type */
+        data temp;
+			length tempVar9 $4.;
+            set &ds.;
+            tempVar9 = cats(put(VAR9, best12.)); /* Convert numeric to string */
+            drop VAR9;
+        run;
+
+        data &ds.;
+            set temp;
+            rename tempVar9 = VAR9;
+        run;
+    %end;
+
+%mend CONVERT_SUBJID_TO_STRING;
+
+%macro CONVERT_SUBJID();
+
+    %do i=1 %to &TOTAL;
+        %let ds=&&SUBJ&i;
+        %if %sysfunc(exist(&ds.)) %then %do;
+            %CONVERT_SUBJID_TO_STRING(&ds.);
+        %end;
+    %end;
+
+%mend CONVERT_SUBJID;
+
+%CONVERT_SUBJID();
 *------------------------------Macro to Aggregate Datasets------------------------------;
+%global _DATE_;
+%macro CONVERT_TO_DATE(ds);
+	proc sql noprint;
+		create table target_date_vars as
+		select field
+        from sheet_&ds.
+        where exists (select * from sheet_&ds. where FieldItem_field_type="date")
+        and FieldItem_field_type="date";
+	quit;
+
+	proc contents data=&ds. out=contents_data noprint;
+	run;
+
+	data non_date_vars;
+		set contents_data;
+		where index(format, 'YYMMDD') = 0;
+	run;
+
+	proc sql noprint;
+		create table ds_conv as
+		select a.NAME
+		from non_date_vars a, target_date_vars b
+		where a.NAME = b.field;
+	quit;
+
+	*In case there is NOTHING found, let "_DATE_" hold " " (NULL);
+    %let _DATE_=;
+    *"_DATE_" holds "field" for date-format;
+	proc sql noprint;
+    	select cats(NAME)
+        into : _DATE_ separated by " "
+        from ds_conv;
+	quit;
+	%put &_date_;
+		
+%mend CONVERT_TO_DATE;
 
 %macro AGGREGATE (ds);
 
@@ -521,15 +600,6 @@ proc sort data=option_f; by Sheet_alias_name; run;
         from sheet_&ds.
           where exists (select * from sheet_&ds. where FieldItem_field_type="num")
           and FieldItem_field_type="num";
-
-        *In case there is NOTHING found, let "_DATE_" hold " " (NULL);
-        %let _DATE_=;
-        *"_DATE_" holds "field" for date-format;
-        select cats(field)
-          into : _DATE_ separated by " "
-        from sheet_&ds.
-          where exists (select * from sheet_&ds. where FieldItem_field_type="date")
-          and FieldItem_field_type="date";
 
         *In case there is NOTHING found, let "_FORM_" hold " " (NULL);
         %let _FORM_=;
@@ -604,6 +674,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
 
 
     quit;
+	%CONVERT_TO_DATE(&ds.);
 
     *Display macro variables in log window (to check);
     %put &_KEEP_.;
