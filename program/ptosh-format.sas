@@ -2,7 +2,7 @@
 Program : ptosh-format.sas
 Purpose : Automatic Data Conversion of Ptosh-based Data to ADS
 Author : Kato Kiroku, Mariko Ohtsuka
-Published : 2024-10-22
+Published : 2024-10-23
 Version : 1.0.1
 **************************************************************************;
 
@@ -132,10 +132,21 @@ run;
 
     %let cancel=;
 
-    proc sort data=sheet; by Sheet_alias_name; run;
-    proc freq data=sheet noprint;
+	proc sql noprint;
+		create table temp_sheet_check4errors as
+		select variable,
+		case 
+			when sheet_category ne "ae_report" & 
+				 sheet_category ne "committees_opinion" & 
+                 sheet_category ne "multiple" then "others"
+			else sheet_category
+		end as sheet_category
+		from sheet
+		order by sheet_category, variable; 
+	quit;
+    proc freq data=temp_sheet_check4errors noprint;
         tables variable / out=sheet_vcount;
-        by Sheet_alias_name;
+        by sheet_category;
     run;
 
     *If duplicate variables are found, let "WarMessage" hold the variable names;
