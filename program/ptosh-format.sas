@@ -113,6 +113,7 @@ data sheet;
     set sheet;
     *Delete unnecessary variables (where "variable" is unnamed);
     if variable=' ' then delete;
+	Sheet_alias_name= translate(Sheet_alias_name, '_', '-');
     *Delete blanks;
     field=cats('field', FieldItem_name_tr__field______);
     c=compress(variable); drop variable; rename c=variable;
