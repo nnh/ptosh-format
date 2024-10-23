@@ -164,6 +164,7 @@ run;
       run;
       *Print warning to log;
       %put WARNING: 変数名 &WarMessage. は重複しています。変数名を変更してください。;
+	  proc printto; run;
       *Stop the current step and any further procedures;
       %abort cancel;
     %end;
