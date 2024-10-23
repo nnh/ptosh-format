@@ -2,8 +2,8 @@
 Program : ptosh-format.sas
 Purpose : Automatic Data Conversion of Ptosh-based Data to ADS
 Author : Kato Kiroku, Mariko Ohtsuka
-Published : 2021-7-16
-Version : 1.0.0
+Published : 2024-10-23
+Version : 1.0.1
 **************************************************************************;
 
 /*NOTES*/
@@ -20,7 +20,35 @@ proc datasets library=work kill nolist; quit;
 dm log 'clear';
 
 options mprint mlogic symbolgen minoperator;
+%macro delete_var_if_exists(varname);
+    %if %symglobl(&varname) %then %do;
+        %symdel &varname;
+        %put &varname was deleted.;
+    %end;
+    %else %do;
+        %put &varname does not exist.;
+    %end;
+%mend;
+%macro delete_all_global_vars();
+    proc sql noprint;
+        select name
+        into :varlist separated by ' '
+        from dictionary.macros
+        where scope = 'GLOBAL' 
+          and name not in ('SYSENV', 'SYSSCP', 'SYSSCPL')
+          and substr(name, 1, 4) ne 'SYS_';  /* 'SYS_'で始まる自動マクロ変数を除外 */
+    quit;
+	%if %symexist(VARLIST) = 0 %then %do;
+        %return;
+    %end;
 
+    %let count = %sysfunc(countw(&varlist));
+    %do i = 1 %to &count;
+        %let varname = %scan(&varlist, &i);
+        %delete_var_if_exists(&varname);
+    %end;
+%mend;
+%delete_all_global_vars;
 
 *------------------------------Current Working Directories------------------------------;
 
@@ -104,10 +132,21 @@ run;
 
     %let cancel=;
 
-    proc sort data=sheet; by Sheet_alias_name; run;
-    proc freq data=sheet noprint;
+	proc sql noprint;
+		create table temp_sheet_check4errors as
+		select variable,
+		case 
+			when sheet_category ne "ae_report" & 
+				 sheet_category ne "committees_opinion" & 
+                 sheet_category ne "multiple" then "others"
+			else sheet_category
+		end as sheet_category
+		from sheet
+		order by sheet_category, variable; 
+	quit;
+    proc freq data=temp_sheet_check4errors noprint;
         tables variable / out=sheet_vcount;
-        by Sheet_alias_name;
+        by sheet_category;
     run;
 
     *If duplicate variables are found, let "WarMessage" hold the variable names;
@@ -136,6 +175,7 @@ run;
       run;
       *Print warning to log;
       %put WARNING: 変数名 &WarMessage. は重複しています。変数名を変更してください。;
+	  proc printto; run;
       *Stop the current step and any further procedures;
       %abort cancel;
     %end;
@@ -324,15 +364,15 @@ data _NULL_;
     if last.Sheet_alias_name then call symputx('TOTAL', i);
 run;
 
-%macro SPLIT;
+%macro SPLIT();
 
-    %global subj total;
+    %global subj;
     %do i=1 %to &TOTAL;
       data sheet_&&SUBJ&i;
           set sheet;
           by Sheet_category;
           where Sheet_alias_name="&&SUBJ&i";
-          if FieldItem_field_type=' ' then delete;
+          *if FieldItem_field_type=' ' then delete;
       run;
       *Create "label_" datasets which do NOT have full-width characters;
       *RSN : Unable to assign variable labels with full-width symbols like "（";
@@ -348,7 +388,7 @@ run;
 
 %mend SPLIT;
 
-%SPLIT;
+%SPLIT();
 
 
 *------------------------------Format------------------------------;
@@ -454,8 +494,84 @@ proc sort data=option_f; by Sheet_alias_name; run;
 
 %put &_DSLIST4CHB_;
 
+%macro CONVERT_SUBJID_TO_STRING(ds);
 
+    /* Get the type of VAR9 */
+    proc contents data=&ds. out=contents(keep=name type) noprint;
+    run;
+
+    /* Check the type of VAR9 */
+    data _null_;
+        set contents;
+        if name = 'VAR9' then call symputx('vartype', type);
+    run;
+
+    /* Convert only if VAR9 is numeric */
+    %if &vartype = 1 %then %do; /* 1 indicates numeric type */
+        data temp;
+			length tempVar9 $4.;
+            set &ds.;
+            tempVar9 = cats(put(VAR9, best12.)); /* Convert numeric to string */
+            drop VAR9;
+        run;
+
+        data &ds.;
+            set temp;
+            rename tempVar9 = VAR9;
+        run;
+    %end;
+
+%mend CONVERT_SUBJID_TO_STRING;
+
+%macro CONVERT_SUBJID();
+
+    %do i=1 %to &TOTAL;
+        %let ds=&&SUBJ&i;
+        %if %sysfunc(exist(&ds.)) %then %do;
+            %CONVERT_SUBJID_TO_STRING(&ds.);
+        %end;
+    %end;
+
+%mend CONVERT_SUBJID;
+
+%CONVERT_SUBJID();
 *------------------------------Macro to Aggregate Datasets------------------------------;
+%global _DATE_;
+%macro CONVERT_TO_DATE(ds);
+	proc sql noprint;
+		create table target_date_vars as
+		select field
+        from sheet_&ds.
+        where exists (select * from sheet_&ds. where FieldItem_field_type="date")
+        and FieldItem_field_type="date";
+	quit;
+
+	proc contents data=&ds. out=contents_data noprint;
+	run;
+
+	data non_date_vars;
+		set contents_data;
+		where index(format, 'YYMMDD') = 0;
+	run;
+
+	proc sql noprint;
+		create table ds_conv as
+		select a.NAME
+		from non_date_vars a, target_date_vars b
+		where a.NAME = b.field;
+	quit;
+
+	*In case there is NOTHING found, let "_DATE_" hold " " (NULL);
+    %let _DATE_=;
+    *"_DATE_" holds "field" for date-format;
+	proc sql noprint;
+    	select cats(NAME)
+        into : _DATE_ separated by " "
+        from ds_conv;
+	quit;
+	%put &_date_;
+		
+%mend CONVERT_TO_DATE;
 
 %macro AGGREGATE (ds);
 
@@ -496,15 +612,6 @@ proc sort data=option_f; by Sheet_alias_name; run;
         from sheet_&ds.
           where exists (select * from sheet_&ds. where FieldItem_field_type="num")
           and FieldItem_field_type="num";
-
-        *In case there is NOTHING found, let "_DATE_" hold " " (NULL);
-        %let _DATE_=;
-        *"_DATE_" holds "field" for date-format;
-        select cats(field)
-          into : _DATE_ separated by " "
-        from sheet_&ds.
-          where exists (select * from sheet_&ds. where FieldItem_field_type="date")
-          and FieldItem_field_type="date";
 
         *In case there is NOTHING found, let "_FORM_" hold " " (NULL);
         %let _FORM_=;
@@ -569,7 +676,17 @@ proc sort data=option_f; by Sheet_alias_name; run;
           and Sheet_alias_name="&ds."
           and FieldItem_field_type='ctcae';
 
+        %let _FORM_CHAR_=;
+        select catx(" ", field, trim(FMTNAME) || '.')
+          into : _FORM_CHAR_ separated by " "
+        from option_f
+          where exists (select * from option_f where Sheet_alias_name="&ds.")
+          and Sheet_alias_name="&ds."
+          and FieldItem_field_type='char';
+
+
     quit;
+	%CONVERT_TO_DATE(&ds.);
 
     *Display macro variables in log window (to check);
     %put &_KEEP_.;
@@ -584,6 +701,7 @@ proc sort data=option_f; by Sheet_alias_name; run;
     %put &_CTCAE_LAB_.;
     %put &_CTCAE_VAR_.;
     %put &_CTCAE_FRM_.;
+    %put &_FORM_CHAR_.;
 
     *Convert character variables specified above;
     %macro CONVERT_1 (varlist1, varlist2, varlist3, varlist4, varlist5);
@@ -628,17 +746,17 @@ proc sort data=option_f; by Sheet_alias_name; run;
 
     %mend CONVERT_1;
 
-    data &ds._2;
+    data &ds._dmy;
         set &ds.;
         %CONVERT_1 (&_NUM_., &_DATE_., &_CTCAE_FLD_., &_CTCAE_LAB_., &_CTCAE_VAR_.);
     run;
 
     *Put FORMAT, KEEP, LABEL and RENAME statement;
     data xxx_&ds.;
-        set &ds._2;
+        set &ds._dmy;
         retain Var_Obs 0;
         Var_Obs+1;
-        format &_FORM_. &_CTCAE_FRM_.;
+        format &_FORM_. &_CTCAE_FRM_. &_FORM_CHAR_.;
         keep VAR9 &_KEEP_. &_CTCAE_KP1_. &_CTCAE_KP2_. Var_Obs;
         label VAR9='症例登録番号' &_LABEL_.;
         rename VAR9=SUBJID &_RENAME_.;
