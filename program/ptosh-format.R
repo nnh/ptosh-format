@@ -1,6 +1,6 @@
 # Format Ptosh data for analysis program
 # Created date: 2018/12/19
-# Modification date: 2024/10/21
+# Modification date: 2024/10/23
 # Author: mariko ohtsuka
 # Version: 1.0.1
 if(!require("here")){
@@ -24,7 +24,11 @@ alias_name <- unique_sheet_csv$Sheet.alias_name
 sheet_category <- unique_sheet_csv$Sheet.category
 merge_excluded_alias_name <- unique_sheet_csv[which(unique_sheet_csv$Sheet.category
                                                          %in% kMerge_excluded_sheet_category), "Sheet.alias_name"]
-merge_alias_name <- alias_name[-which(alias_name %in% merge_excluded_alias_name)]
+if (length(merge_excluded_alias_name) > 0) {
+  merge_alias_name <- alias_name[-which(alias_name %in% merge_excluded_alias_name)]
+} else {
+  merge_alias_name <- alias_name
+}
 # Create an empty data frame
 df_duplicated <- data.frame(matrix(rep(NA, ncol(sheet_csv) + 1), nrow=1))[numeric(0), ]
 for (i in 1:length(merge_excluded_alias_name)) {
@@ -38,6 +42,7 @@ df_duplicated <- CheckDuplicated(temp_duplicated_df, df_duplicated, "variable")
 if (nrow(df_duplicated) != 0) {
   colnames(df_duplicated) <- c("row", colnames(sheet_csv))
   write.csv(df_duplicated, file.path(output_path, "variable_duplicated.csv"), row.names=F, fileEncoding="cp932")
+  print(df_duplicated)
   stop("Duplicate variable name")
   Exit()
 }
