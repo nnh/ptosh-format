@@ -84,6 +84,36 @@ proc printto log="&cwd.\ptosh-format\log\ptosh-format.log" new; run;
 %let ext=&cwd.\input\ext;
 %let create_ads_dir=%sysfunc(dcreate(ads, &cwd.\ptosh-format));
 %let ads=&cwd.\ptosh-format\ads;
+%macro DELETE_FILES_IN_FOLDER(folder_path);
+    filename myfolder "&folder_path.";
+
+    data _null_;
+        length fname $256;
+        rc = filename('dir', "&folder_path.");
+        did = dopen('dir');
+
+        if did > 0 then do;
+            do i = 1 to dnum(did);
+                fname = dread(did, i);
+                rc = filename('file', cats("&folder_path.\", fname));
+                if fexist('file') then do;
+                    rc = fdelete('file');
+                    if rc = 0 then
+                        put "Deleted file: " fname;
+                    else
+                        put "ERROR: Failed to delete file: " fname;
+                end;
+            end;
+            rc = dclose(did);
+        end;
+        else put "ERROR: Unable to open directory &folder_path.";
+
+        rc = filename('dir');
+    run;
+
+%mend DELETE_FILES_IN_FOLDER;
+%DELETE_FILES_IN_FOLDER(&ads.);
+
 %let create_temp_dir=%sysfunc(dcreate(temp, &cwd.\ptosh-format));
 %let temp=&cwd.\ptosh-format\temp;
 
@@ -113,6 +143,7 @@ data sheet;
     set sheet;
     *Delete unnecessary variables (where "variable" is unnamed);
     if variable=' ' then delete;
+	Sheet_alias_name= translate(Sheet_alias_name, '_', '-');
     *Delete blanks;
     field=cats('field', FieldItem_name_tr__field______);
     c=compress(variable); drop variable; rename c=variable;
